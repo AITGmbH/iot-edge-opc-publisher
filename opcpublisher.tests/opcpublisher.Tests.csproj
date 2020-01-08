@@ -31,6 +31,12 @@
     <None Update="testdata\ait\pn_plc_simple.json">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
+    <None Update="testdata\ait\pn_plc_simple_with_key.json">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="testdata\ait\pn_plc_simple_with_key_2.json">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
     <None Update="testdata\event\pn_plc_empty-payload.json">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>

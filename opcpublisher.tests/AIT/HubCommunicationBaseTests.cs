@@ -1,19 +1,35 @@
 using FluentAssertions;
 using Microsoft.Azure.Devices.Client;
 using Moq;
-using OpcPublisher;
+using Newtonsoft.Json;
+using OpcPublisher.AIT;
 using Serilog;
 using System;
+using System.Collections.Generic;
 using System.Globalization;
+using System.IO;
+using System.Net;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using Xunit;
+using Xunit.Abstractions;
+using static OpcPublisher.Program;
+
 
 namespace OpcPublisher.Tests.AIT
 {
+    [Collection("Need PLC and publisher config")]
     public class HubCommunicationBaseTests
     {
+        private readonly ITestOutputHelper _output;
+
+        public HubCommunicationBaseTests(ITestOutputHelper output)
+        {
+            _output = output;
+            Logger = new LoggerConfiguration().CreateLogger();
+        }
+
         [Fact]
         public async Task MonitoredItemsProcessorAsync_ShouldWaitForTimeout()
         {
@@ -23,12 +39,10 @@ namespace OpcPublisher.Tests.AIT
 
             var itemProcessor = new HubCommunicationBase();
 
-            Program.Logger = new LoggerConfiguration().CreateLogger();
-
             itemProcessor.SendIntervalSeconds = timeoutSeconds;
             itemProcessor.HubMessageSize = 100000;
 
-            Program.TelemetryConfiguration = new PublisherTelemetryConfiguration();
+            TelemetryConfiguration = new PublisherTelemetryConfiguration();
 
             DateTime lastMessageSent = DateTime.UtcNow;
             TimeSpan timeBetweenMessages = new TimeSpan();
@@ -86,8 +100,7 @@ namespace OpcPublisher.Tests.AIT
             ManualResetEvent messageReceivedEvent = new ManualResetEvent(false);
 
             var itemProcessor = new HubCommunicationBase();
-            Program.Logger = new LoggerConfiguration().CreateLogger();
-            Program.TelemetryConfiguration = new PublisherTelemetryConfiguration();
+            TelemetryConfiguration = new PublisherTelemetryConfiguration();
             itemProcessor.SendIntervalSeconds = 0;
             itemProcessor.HubMessageSize = buffersize;
 
@@ -144,6 +157,119 @@ namespace OpcPublisher.Tests.AIT
             //and the received messages begins with '[' and ends with ']'
             streamLength.Should().Be((messageLength + 1) * (messagesToSend - 1) + 1);
 
+        }
+
+        [Theory]
+        [MemberData(nameof(PnPlcSimpleWithKeyAndModifications))]
+        public async Task HandleSaveOpcPublishedConfigurationAsJson_FormatIsRight_ShouldReinitializeNodeConfiguration(
+            string testFilename,
+            string testFileNameWithModifiedKey,
+            int configuredSessions,
+            int configuredSubscriptions,
+            int configuredMonitoredItems,
+            int configuredMonitoredEvents)
+        {
+            OpcNodeOnEndpointModel GetFirstNode()
+            {
+                var endpointId = NodeConfiguration.OpcSessions[0].EndpointId;
+                var nodes = NodeConfiguration.GetPublisherConfigurationFileEntries(endpointId, true, out uint version);
+                return nodes[0].OpcNodes[0];
+            }
+
+            using (new ExecutionContext(testFilename))
+            {
+                var hubCommunicationBase = new HubCommunicationBase();
+                AssertPreconditions(configuredSessions, configuredSubscriptions, configuredMonitoredItems, configuredMonitoredEvents);
+
+                // Get node before saving new file.
+                var opcNodeBeforeSave = GetFirstNode();
+
+                // ------- Act -----
+
+                // load different file with key change.
+                var modifiedFilePath = CopyFileToTempData(testFileNameWithModifiedKey);
+                // Read the file data as bytes
+                var text = await File.ReadAllTextAsync(modifiedFilePath);
+                var methodRequestModel = new HandleSaveOpcPublishedConfigurationMethodRequestModel(text);
+                var json = JsonConvert.SerializeObject(methodRequestModel);
+                var bytes = Encoding.UTF8.GetBytes(json);
+                var request = new MethodRequest("SaveOpcPublishedConfigurationAsJson", bytes);
+                // Feed the json string to the communication base
+                var success = await hubCommunicationBase.HandleSaveOpcPublishedConfigurationAsJson(request, new object());
+
+                // ------- Assert ------
+
+                // The preconditions should not change, since only the key of the node is changed.
+                AssertPreconditions(configuredSessions, configuredSubscriptions, configuredMonitoredItems, configuredMonitoredEvents);
+                Assert.True(success.Status == (int)HttpStatusCode.OK);
+
+                var opcNodeAfterSave = GetFirstNode();
+                Assert.Equal(opcNodeBeforeSave.Id, opcNodeBeforeSave.Id);
+                Assert.Equal("i=2267", opcNodeBeforeSave.Key);
+                Assert.Equal("i=2267-test", opcNodeAfterSave.Key);
+            }
+        }
+
+        // name of published nodes configuration file
+        // name of configuration file with modified keys
+        // # of configured sessions
+        // # of configured subscriptions
+        // # of configured monitored items
+        // # of configured monitored events
+        public static IEnumerable<object[]> PnPlcSimpleWithKeyAndModifications =>
+            new List<object[]>
+            {
+                new object[]
+                {
+                    "pn_plc_simple_with_key.json", "pn_plc_simple_with_key_2.json", 1, 2, 1, 1
+                },
+            };
+
+        private void AssertPreconditions(int configuredSessions, int configuredSubscriptions, int configuredMonitoredItems, int configuredMonitoredEvents)
+        {
+            _output.WriteLine($"sessions configured {NodeConfiguration.NumberOfOpcSessionsConfigured}, connected {NodeConfiguration.NumberOfOpcSessionsConnected}");
+            _output.WriteLine($"subscriptions configured {NodeConfiguration.NumberOfOpcSubscriptionsConfigured}, connected {NodeConfiguration.NumberOfOpcSubscriptionsConnected}");
+            _output.WriteLine($"items configured {NodeConfiguration.NumberOfOpcDataChangeMonitoredItemsConfigured}, monitored {NodeConfiguration.NumberOfOpcDataChangeMonitoredItemsMonitored}, toRemove {NodeConfiguration.NumberOfOpcDataChangeMonitoredItemsToRemove}");
+            _output.WriteLine($"events configured {NodeConfiguration.NumberOfOpcEventMonitoredItemsConfigured}, monitored {NodeConfiguration.NumberOfOpcEventMonitoredItemsConfigured}, toRemove {NodeConfiguration.NumberOfOpcDataChangeMonitoredItemsToRemove}");
+
+            Assert.True(NodeConfiguration.OpcSessions.Count == configuredSessions, "wrong # of sessions");
+            Assert.True(NodeConfiguration.NumberOfOpcSessionsConfigured == configuredSessions, "wrong # of sessions");
+            Assert.True(NodeConfiguration.NumberOfOpcSubscriptionsConfigured == configuredSubscriptions, "wrong # of subscriptions");
+            Assert.True(NodeConfiguration.NumberOfOpcDataChangeMonitoredItemsConfigured == configuredMonitoredItems, "wrong # of monitored items");
+            Assert.True(NodeConfiguration.NumberOfOpcEventMonitoredItemsConfigured == configuredMonitoredEvents, "wrong # of monitored events");
+        }
+
+        private static string CopyFileToTempData(string testFilename)
+        {
+            var methodName = UnitTestHelper.GetMethodName();
+            var fqTestFilename = $"{Directory.GetCurrentDirectory()}/testdata/ait/{testFilename}";
+            var fqTempFilename = $"{Directory.GetCurrentDirectory()}/tempdata/{methodName}_{testFilename}";
+            if (File.Exists(fqTempFilename))
+            {
+                File.Delete(fqTempFilename);
+            }
+            File.Copy(fqTestFilename, fqTempFilename);
+            return fqTempFilename;
+        }
+
+        private class ExecutionContext : IDisposable
+        {
+            public ExecutionContext(string testFilename)
+            {
+                string fqTempFilename = CopyFileToTempData(testFilename);
+                PublisherNodeConfiguration.PublisherNodeConfigurationFilename = fqTempFilename;
+                Assert.True(File.Exists(PublisherNodeConfiguration.PublisherNodeConfigurationFilename));
+                NodeConfiguration = new PublisherNodeConfiguration(); // PublisherNodeConfiguration.Instance;
+            }
+
+            public void Dispose()
+            {
+                NodeConfiguration.Dispose();
+                NodeConfiguration = null;
+                IotHubCommunication.IotHubClient = null;
+                Hub?.Dispose();
+                Hub = null;
+            }
         }
     }
 }

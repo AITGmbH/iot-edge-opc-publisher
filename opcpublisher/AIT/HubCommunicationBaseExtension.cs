@@ -117,11 +117,11 @@ namespace OpcPublisher
                     else
                     {
                         IOpcSession opcSession = null;
-                         /* we create new sessions in two cases
-                            1. For new endpoints
-                            2. For existing endpoints which do not have a OpcSession configured: 
-                               this happens if for an existing endpoint all monitored items, commands and events are removed (unused sessions are removed). 
-                        */
+                        /* we create new sessions in two cases
+                           1. For new endpoints
+                           2. For existing endpoints which do not have a OpcSession configured: 
+                              this happens if for an existing endpoint all monitored items, commands and events are removed (unused sessions are removed). 
+                       */
                         var isNewEndpoint = endpointId == Guid.Empty;
                         var isExistingEndpointWithoutSession = !isNewEndpoint && NodeConfiguration.OpcSessions.FirstOrDefault(s => s.EndpointId.Equals(endpointId)) == null;
                         if (isNewEndpoint || isExistingEndpointWithoutSession)
@@ -131,8 +131,8 @@ namespace OpcPublisher
                             {
                                 desiredAuthenticationMode = OpcAuthenticationMode.Anonymous;
                             }
-                            
-                            if(isNewEndpoint)
+
+                            if (isNewEndpoint)
                             {
                                 endpointId = Guid.NewGuid();
                             }
@@ -141,7 +141,7 @@ namespace OpcPublisher
                             NodeConfiguration.OpcSessions.Add(opcSession);
                             Logger.Information($"{logPrefix} No matching session found for endpoint '{endpointUri.OriginalString}'. Requested to create a new one.");
                         }
-                        else 
+                        else
                         {
                             // find the session we need to monitor the node
                             opcSession = NodeConfiguration.OpcSessions.FirstOrDefault(s => s.EndpointUrl.Equals(endpointUri?.OriginalString, StringComparison.OrdinalIgnoreCase));
@@ -304,7 +304,7 @@ namespace OpcPublisher
             // build response
             publishedEventMethodResponse = new PublishNodesMethodResponseModel(endpointId.ToString());
             string resultString = statusCode == HttpStatusCode.OK || statusCode == HttpStatusCode.Accepted ?
-                JsonConvert.SerializeObject(publishedEventMethodResponse): 
+                JsonConvert.SerializeObject(publishedEventMethodResponse) :
                 JsonConvert.SerializeObject(statusResponse);
             byte[] result = Encoding.UTF8.GetBytes(resultString);
 
@@ -342,15 +342,16 @@ namespace OpcPublisher
             {
                 Logger.Debug($"{logPrefix} called");
                 getConfiguredEventNodesOnEndpointMethodRequest = JsonConvert.DeserializeObject<GetConfiguredNodesOnEndpointMethodRequestModel>(methodRequest.DataAsJson);
-                if(getConfiguredEventNodesOnEndpointMethodRequest.EndpointId == null) 
+                if (getConfiguredEventNodesOnEndpointMethodRequest.EndpointId == null)
                 {
                     statusMessage = $"New endpoint: there are no event nodes configured";
                     Logger.Information($"{logPrefix} {statusMessage}");
                     statusResponse.Add(statusMessage);
                     statusCode = HttpStatusCode.NoContent;
                 }
-                else{
-                    endpointId =new Guid(getConfiguredEventNodesOnEndpointMethodRequest.EndpointId);
+                else
+                {
+                    endpointId = new Guid(getConfiguredEventNodesOnEndpointMethodRequest.EndpointId);
                 }
             }
             catch (FormatException e)
@@ -387,7 +388,7 @@ namespace OpcPublisher
                     endpointUrl = configFileEntries.First().EndpointUrl.ToString();
                     foreach (var configFileEntry in configFileEntries)
                     {
-                        if(configFileEntry?.OpcEvents != null)
+                        if (configFileEntry?.OpcEvents != null)
                         {
                             opcEvents.AddRange(configFileEntry.OpcEvents);
                         }
@@ -451,16 +452,16 @@ namespace OpcPublisher
                         .Select(n =>
                             new OpcEventOnEndpointModel(
                                 new EventConfigurationModel(
-                                    endpointId.ToString(), 
-                                    endpointName, 
-                                    endpointUrl, 
+                                    endpointId.ToString(),
+                                    endpointName,
+                                    endpointUrl,
                                     null,
                                     OpcAuthenticationMode.Anonymous,
                                     null,
-                                    n.Id, 
-                                    n.DisplayName, 
-                                    n.SelectClauses, 
-                                    n.WhereClause, 
+                                    n.Id,
+                                    n.DisplayName,
+                                    n.SelectClauses,
+                                    n.WhereClause,
                                     n.IotCentralEventPublishMode
                                ),
                                OpcPublisherPublishState.Published
@@ -473,8 +474,8 @@ namespace OpcPublisher
             }
             else if (statusCode == HttpStatusCode.NoContent)
             {
-                 resultString = JsonConvert.SerializeObject(getConfiguredEventNodesOnEndpointMethodResponse);
-                 Logger.Information($"{logPrefix} Success returning 0 event nodes.");
+                resultString = JsonConvert.SerializeObject(getConfiguredEventNodesOnEndpointMethodResponse);
+                Logger.Information($"{logPrefix} Success returning 0 event nodes.");
             }
             else
             {
@@ -491,7 +492,7 @@ namespace OpcPublisher
             return Task.FromResult(methodResponse);
         }
 
-        public virtual async Task<MethodResponse> HandleDeleteConfiguredEndpointMethodAsync(MethodRequest methodRequest, object userContext) 
+        public virtual async Task<MethodResponse> HandleDeleteConfiguredEndpointMethodAsync(MethodRequest methodRequest, object userContext)
         {
             const string logPrefix = "HandleDeleteConfiguredEndpointMethodAsync:";
             Guid endpointId = Guid.Empty;
@@ -506,7 +507,7 @@ namespace OpcPublisher
                 Logger.Debug($"{logPrefix} called");
                 deleteConfiguredEndpointMethodRequest = JsonConvert.DeserializeObject<DeleteConfiguredEndpointMethodRequestModel>(methodRequest.DataAsJson);
 
-                if(deleteConfiguredEndpointMethodRequest.EndpointId == null) 
+                if (deleteConfiguredEndpointMethodRequest.EndpointId == null)
                 {
                     statusMessage = $"EndpointId can not be null.";
                     Logger.Error($"{logPrefix} {statusMessage}");
@@ -562,7 +563,8 @@ namespace OpcPublisher
                         else
                         {
                             var session = NodeConfiguration.OpcSessions.SingleOrDefault(s => s.EndpointId == endpointId);
-                            if(session == null){
+                            if (session == null)
+                            {
                                 statusMessage = $"No matching session for endpoint {endpointId.ToString()}.";
                                 Logger.Warning($"{logPrefix} {statusMessage}");
                                 statusResponse.Add(statusMessage);
@@ -625,7 +627,7 @@ namespace OpcPublisher
             }
 
             getOpcPublishedConfigurationMethodResponseModel.ConfigurationJson = configJson;
-                // build response
+            // build response
             string resultString;
             if (statusCode == HttpStatusCode.OK)
             {
@@ -653,15 +655,19 @@ namespace OpcPublisher
             var statusCode = HttpStatusCode.OK;
             SaveOpcPublishedConfigurationMethodResponseModel saveOpcPublishedConfigurationMethodResponseModel = new SaveOpcPublishedConfigurationMethodResponseModel();
 
-
+            // save json file.
             var methodRequestData = JsonConvert.DeserializeObject<HandleSaveOpcPublishedConfigurationMethodRequestModel>(methodRequest.DataAsJson);
             var success = await NodeConfiguration.SaveJsonAsPublisherNodeConfiguration(methodRequestData.ConfigurationJsonString);
-            NodeConfiguration = new PublisherNodeConfiguration();
-            //await NodeConfiguration.UpdateNodeConfigurationFileAsync().ConfigureAwait(false);
+
             if (!success)
             {
                 Logger.Information($"{logPrefix} the configuration file is not valid.");
                 statusCode = HttpStatusCode.BadRequest;
+            }
+            else
+            {
+                // Reinitialize the configurations.
+                await NodeConfiguration.InitAsync();
             }
 
             saveOpcPublishedConfigurationMethodResponseModel.Success = success;

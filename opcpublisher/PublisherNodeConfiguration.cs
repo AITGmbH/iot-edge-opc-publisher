@@ -379,6 +379,28 @@ namespace OpcPublisher
         /// <returns></returns>
         public async Task InitAsync()
         {
+            // Shutdown all old sessions
+            while (OpcSessions.Count > 0)
+            {
+                IOpcSession opcSession = null;
+                try
+                {
+                    await OpcSessionsListSemaphore.WaitAsync().ConfigureAwait(false);
+                    opcSession = OpcSessions.ElementAt(0);
+                    OpcSessions.RemoveAt(0);
+                }
+                finally
+                {
+                    OpcSessionsListSemaphore.Release();
+                }
+                await (opcSession?.ShutdownAsync()).ConfigureAwait(false);
+            }
+
+            // reset data
+            _eventConfiguration.Clear();
+            _configurationFileEntries.Clear();
+            _nodePublishingConfiguration.Clear();
+
             // read the configuration from the configuration file
             if (!await ReadConfigAsync().ConfigureAwait(false))
             {
@@ -442,7 +464,7 @@ namespace OpcPublisher
                                     {
                                         ExpandedNodeId expandedNodeId = ExpandedNodeId.Parse(opcNode.ExpandedNodeId);
                                         _nodePublishingConfiguration.Add(new NodePublishingConfigurationModel(expandedNodeId, opcNode.ExpandedNodeId,
-                                            publisherConfigFileEntryLegacy.EndpointId, publisherConfigFileEntryLegacy.EndpointName, publisherConfigFileEntryLegacy.EndpointUrl.OriginalString, 
+                                            publisherConfigFileEntryLegacy.EndpointId, publisherConfigFileEntryLegacy.EndpointName, publisherConfigFileEntryLegacy.EndpointUrl.OriginalString,
                                             publisherConfigFileEntryLegacy.UseSecurity,
                                             opcNode.OpcPublishingInterval, opcNode.OpcSamplingInterval, opcNode.Key, opcNode.DisplayName,
                                             opcNode.HeartbeatInterval, opcNode.SkipFirst, publisherConfigFileEntryLegacy.OpcAuthenticationMode,
@@ -456,7 +478,7 @@ namespace OpcPublisher
                                             // ExpandedNodeId format
                                             ExpandedNodeId expandedNodeId = ExpandedNodeId.Parse(opcNode.Id);
                                             _nodePublishingConfiguration.Add(new NodePublishingConfigurationModel(expandedNodeId, opcNode.Id,
-                                                publisherConfigFileEntryLegacy.EndpointId, publisherConfigFileEntryLegacy.EndpointName, publisherConfigFileEntryLegacy.EndpointUrl.OriginalString, 
+                                                publisherConfigFileEntryLegacy.EndpointId, publisherConfigFileEntryLegacy.EndpointName, publisherConfigFileEntryLegacy.EndpointUrl.OriginalString,
                                                 publisherConfigFileEntryLegacy.UseSecurity,
                                                 opcNode.OpcPublishingInterval, opcNode.OpcSamplingInterval, opcNode.Key, opcNode.DisplayName,
                                                 opcNode.HeartbeatInterval, opcNode.SkipFirst, publisherConfigFileEntryLegacy.OpcAuthenticationMode,
@@ -481,13 +503,13 @@ namespace OpcPublisher
                                 {
                                     _eventConfiguration.Add(
                                         new EventConfigurationModel(
-                                            publisherConfigFileEntryLegacy.EndpointId.ToString(), 
+                                            publisherConfigFileEntryLegacy.EndpointId.ToString(),
                                             publisherConfigFileEntryLegacy.EndpointName,
-                                            publisherConfigFileEntryLegacy.EndpointUrl.OriginalString, 
+                                            publisherConfigFileEntryLegacy.EndpointUrl.OriginalString,
                                             publisherConfigFileEntryLegacy.UseSecurity,
                                             publisherConfigFileEntryLegacy.OpcAuthenticationMode,
                                             publisherConfigFileEntryLegacy.EncryptedAuthCredential,
-                                            opcEvent.Id, 
+                                            opcEvent.Id,
                                             opcEvent.DisplayName,
                                             opcEvent.SelectClauses,
                                             opcEvent.WhereClause,
@@ -598,8 +620,6 @@ namespace OpcPublisher
                             JsonConvert.DeserializeObject<List<PublisherConfigurationFileEntryLegacyModel>>(json);
                         Logger.Information($"JSON received is: {json}");
                         File.WriteAllText(PublisherNodeConfigurationFilename, JsonConvert.SerializeObject(_configurationFileEntries));
-
-                        Logger.Information($"Attempting to restart session to apply new configuration.");
                         return true;
                     }
                     catch (Exception e)
@@ -627,17 +647,17 @@ namespace OpcPublisher
         {
             // I don't know why this argument is overridden, but now it
             // could be a node or event publishing configuration
-            var useSecurityOverride = 
+            var useSecurityOverride =
                 _nodePublishingConfiguration.FirstOrDefault(n => n.EndpointId == endpointId)?.UseSecurity ??
                 _eventConfiguration.FirstOrDefault(n => n.EndpointId == endpointId.ToString())?.UseSecurity;
 
             return new OpcSession(
-                endpointId, 
+                endpointId,
                 endpointName,
-                endpointUrl, 
-                useSecurityOverride ?? throw new InvalidOperationException("No configuration for endpoint found"), 
-                OpcSessionCreationTimeout, 
-                opcAuthenticationMode, 
+                endpointUrl,
+                useSecurityOverride ?? throw new InvalidOperationException("No configuration for endpoint found"),
+                OpcSessionCreationTimeout,
+                opcAuthenticationMode,
                 encryptedAuthCredential);
         }
 
@@ -906,7 +926,8 @@ namespace OpcPublisher
                                         // ignore items tagged to stop
                                         if (monitoredItem.State != OpcMonitoredItemState.RemovalRequested || getAll == true)
                                         {
-                                            OpcNodeOnEndpointModel opcNodeOnEndpoint = new OpcNodeOnEndpointModel(monitoredItem.OriginalId) {
+                                            OpcNodeOnEndpointModel opcNodeOnEndpoint = new OpcNodeOnEndpointModel(monitoredItem.OriginalId)
+                                            {
                                                 OpcPublishingInterval = subscription.RequestedPublishingIntervalFromConfiguration ? subscription.RequestedPublishingInterval : (int?)null,
                                                 OpcSamplingInterval = monitoredItem.RequestedSamplingIntervalFromConfiguration ? monitoredItem.RequestedSamplingInterval : (int?)null,
                                                 Key = monitoredItem.Key,
