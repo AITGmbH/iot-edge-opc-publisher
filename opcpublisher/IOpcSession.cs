@@ -134,16 +134,6 @@ namespace OpcPublisher
         int GetNumberOfOpcEventMonitoredItemsToRemove();
 
         /// <summary>
-        /// This task is started when a session is configured and is running till session shutdown and ensures:
-        /// - disconnected sessions are reconnected.
-        /// - monitored nodes are no longer monitored if requested to do so.
-        /// - monitoring for a node starts if it is required.
-        /// - unused subscriptions (without any nodes to monitor) are removed.
-        /// - sessions with out subscriptions are removed.
-        /// </summary>
-        Task ConnectAndMonitorAsync();
-
-        /// <summary>
         /// Connects the session if it is disconnected.
         /// </summary>
         Task ConnectSessionAsync(CancellationToken ct);
@@ -219,5 +209,6 @@ namespace OpcPublisher
             PublishNodesMethodRequestModel publishEventsMethodData);
 
         Task Reconnect();
+        Task ConnectAndMonitorAsync();
     }
 }
