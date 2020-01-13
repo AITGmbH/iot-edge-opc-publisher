@@ -401,7 +401,7 @@ namespace OpcPublisher
                             }
                         }
 
-                        // unpublish all removes nodes
+                        // unpublish all removed nodes
                         var nodesToRemove = publishNodesMethodData.OpcNodes.Where(n => n.OpcPublisherPublishState == OpcPublisherPublishState.Remove);
                         var unpublishStatusResponse = new List<string>();
                         (statusCode, statusMessage, unpublishStatusResponse) = await UnpublishNodesAsync(opcSession, nodesToRemove).ConfigureAwait(false);
@@ -624,8 +624,6 @@ namespace OpcPublisher
                         {
                             await UnpublishNodesAsync(opcSession, unpublishNodesMethodData.OpcNodes).ConfigureAwait(false);
                         }
-
-                        await opcSession.ConnectAndMonitorAsync().ConfigureAwait(false);
                     }
                 }
                 catch (AggregateException e)
@@ -642,7 +640,7 @@ namespace OpcPublisher
                 catch (Exception e)
                 {
                     statusMessage = $"EndpointUrl: '{unpublishNodesMethodData.EndpointId}': exception ({e.Message}) while trying to unpublish";
-                    Logger.Error($"e, {logPrefix} {statusMessage}");
+                    Logger.Error(e, $"{logPrefix} {statusMessage}");
                     statusResponse.Add(statusMessage);
                     statusCode = HttpStatusCode.InternalServerError;
                 }
