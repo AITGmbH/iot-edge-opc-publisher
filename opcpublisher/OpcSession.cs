@@ -22,6 +22,8 @@ namespace OpcPublisher
     /// </summary>
     public partial class OpcSession : IOpcSession
     {
+        private uint _lastNodeConfigVersion;
+
         /// <summary>
         /// The state of the session object.
         /// </summary>
@@ -339,6 +341,7 @@ namespace OpcPublisher
         /// </summary>
         public OpcSession(Guid endpointId, string endpointName, string endpointUrl, bool useSecurity, uint sessionTimeout, OpcAuthenticationMode opcAuthenticationMode, EncryptedNetworkCredential encryptedAuthCredential)
         {
+            _lastNodeConfigVersion = 0;
             State = SessionState.Disconnected;
             EndpointId = endpointId;
             EndpointName = endpointName;
@@ -355,8 +358,8 @@ namespace OpcPublisher
             _sessionCancelationToken = _sessionCancelationTokenSource.Token;
             _opcSessionSemaphore = new SemaphoreSlim(1);
             _namespaceTable = new NamespaceTable();
-            _connectAndMonitorAsync = Task.Run(async () => await ConnectAndMonitorAsync(), _sessionCancelationToken);
-            this.OpcAuthenticationMode= opcAuthenticationMode;
+            _connectAndMonitorAsync = Task.Run(async () => await ConnectAndMonitorLoopAsync(), _sessionCancelationToken);
+            this.OpcAuthenticationMode = opcAuthenticationMode;
             this.EncryptedAuthCredential = encryptedAuthCredential;
         }
 
@@ -441,10 +444,8 @@ namespace OpcPublisher
         /// - unused subscriptions (without any nodes to monitor) are removed.
         /// - sessions with out subscriptions are removed.
         /// </summary>
-        public virtual async Task ConnectAndMonitorAsync()
+        private async Task ConnectAndMonitorLoopAsync()
         {
-            uint lastNodeConfigVersion = 0;
-
             WaitHandle[] connectAndMonitorEvents = new WaitHandle[]
             {
                 _sessionCancelationToken.WaitHandle,
@@ -454,63 +455,77 @@ namespace OpcPublisher
             // run till session is closed
             while (true)
             {
+                // wait till:
+                // - cancelation is requested
+                // - got signaled because we need to check for pending session activity
+                // - timeout to try to reestablish any disconnected sessions
                 try
                 {
-                    // wait till:
-                    // - cancelation is requested
-                    // - got signaled because we need to check for pending session activity
-                    // - timeout to try to reestablish any disconnected sessions
-                    try
-                    {
-                        WaitHandle.WaitAny(connectAndMonitorEvents, SessionConnectWaitSec * 1000);
-                        _sessionCancelationToken.ThrowIfCancellationRequested();
-                    }
-                    catch
-                    {
-                        break;
-                    }
-
-                    await ConnectSessionAsync(_sessionCancelationToken).ConfigureAwait(false);
-
-                    await MonitorNodesAsync(_sessionCancelationToken).ConfigureAwait(false);
+                    WaitHandle.WaitAny(connectAndMonitorEvents, SessionConnectWaitSec * 1000);
                     _sessionCancelationToken.ThrowIfCancellationRequested();
-
-                    await MonitorEventsAsync(_sessionCancelationToken).ConfigureAwait(false);
-                    _sessionCancelationToken.ThrowIfCancellationRequested();
-
-                    await StopMonitoringItemsAsync(_sessionCancelationToken).ConfigureAwait(false);
-                    _sessionCancelationToken.ThrowIfCancellationRequested();
-
-                    if (SavePublishedNodes)
-                    {
-                        await NodeConfiguration.UpdateNodeConfigurationFileAsync().ConfigureAwait(false);
-                        SavePublishedNodes = false;
-                        Logger.Information("Updated publishednodes.json");
-                    }
-                    await RemoveUnusedSubscriptionsAsync(_sessionCancelationToken).ConfigureAwait(false);
-                    _sessionCancelationToken.ThrowIfCancellationRequested();
-
-                    await RemoveUnusedSessionsAsync(_sessionCancelationToken).ConfigureAwait(false);
-                    _sessionCancelationToken.ThrowIfCancellationRequested();
-
-                    // update the config file if required
-                    if (NodeConfigVersion != lastNodeConfigVersion)
-                    {
-                        lastNodeConfigVersion = (uint)NodeConfigVersion;
-                        await NodeConfiguration.UpdateNodeConfigurationFileAsync().ConfigureAwait(false);
-                    }
                 }
-                catch (Exception e)
+                catch
                 {
-                    if (_sessionCancelationToken != null && !_sessionCancelationToken.IsCancellationRequested)
-                    {
-                        Logger.Error(e, "Exception");
-                    }
-                    else
-                    {
-                        break;
-                    }
+                    break;
                 }
+
+                await ConnectAndMonitorAsync().ConfigureAwait(false);
+                if (_sessionCancelationToken.IsCancellationRequested) break;
+            }
+        }
+
+        public async Task ConnectAndMonitorAsync()
+        {
+            var startTime = Stopwatch.GetTimestamp();
+
+            try
+            {
+                await ConnectSessionAsync(_sessionCancelationToken).ConfigureAwait(false);
+
+                await MonitorNodesAsync(_sessionCancelationToken).ConfigureAwait(false);
+                _sessionCancelationToken.ThrowIfCancellationRequested();
+
+                await MonitorEventsAsync(_sessionCancelationToken).ConfigureAwait(false);
+                _sessionCancelationToken.ThrowIfCancellationRequested();
+
+                await StopMonitoringItemsAsync(_sessionCancelationToken).ConfigureAwait(false);
+                _sessionCancelationToken.ThrowIfCancellationRequested();
+
+                if (SavePublishedNodes)
+                {
+                    await NodeConfiguration.UpdateNodeConfigurationFileAsync().ConfigureAwait(false);
+                    SavePublishedNodes = false;
+                    Logger.Information("Updated publishednodes.json");
+                }
+
+                await RemoveUnusedSubscriptionsAsync(_sessionCancelationToken).ConfigureAwait(false);
+                _sessionCancelationToken.ThrowIfCancellationRequested();
+
+                await RemoveUnusedSessionsAsync(_sessionCancelationToken).ConfigureAwait(false);
+                _sessionCancelationToken.ThrowIfCancellationRequested();
+
+                // update the config file if required
+                if (NodeConfigVersion != _lastNodeConfigVersion)
+                {
+                    _lastNodeConfigVersion = (uint)NodeConfigVersion;
+                    await NodeConfiguration.UpdateNodeConfigurationFileAsync().ConfigureAwait(false);
+                }
+            }
+            catch (Exception e)
+            {
+                if (_sessionCancelationToken != null && !_sessionCancelationToken.IsCancellationRequested)
+                {
+                    Logger.Error(e, "Exception");
+                }
+                else
+                {
+                    return;
+                }
+            }
+            finally
+            {
+                var elapsedMs = (Stopwatch.GetTimestamp() - startTime) * 1000 / (double)Stopwatch.Frequency;
+                Logger.Information($"Updated opc session '{EndpointName}' in {elapsedMs:0.000} ms");
             }
         }
 
