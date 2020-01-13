@@ -1162,6 +1162,7 @@ namespace OpcPublisher
                     OpcPublishingInterval = n.OpcPublishingInterval,
                     OpcSamplingInterval = n.OpcSamplingInterval,
                     Key = n.Key,
+                    Id = n.Id,
                     DisplayName = n.DisplayName,
                     IotCentralItemPublishMode = n.IotCentralItemPublishMode,
                     OpcPublisherPublishState = n.OpcPublisherPublishState
