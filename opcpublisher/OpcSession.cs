@@ -1462,8 +1462,6 @@ namespace OpcPublisher
                     Interlocked.Increment(ref NodeConfigVersion);
                     Logger.Debug($"{logPrefix} Added item with nodeId '{(expandedNodeId == null ? nodeId.ToString() : expandedNodeId.ToString())}' for monitoring.");
 
-                    // trigger the actual OPC communication with the server to be done
-                    ConnectAndMonitorSession.Set();
                     return HttpStatusCode.Accepted;
                 }
                 else
@@ -1542,9 +1540,6 @@ namespace OpcPublisher
                         result = HttpStatusCode.Accepted;
                     }
                 }
-
-                // trigger the actual OPC communication with the server to be done
-                ConnectAndMonitorSession.Set();
             }
             catch (Exception e)
             {

@@ -12,6 +12,7 @@ namespace OpcPublisher.AIT
         None,
         Published,
         Add,
-        Remove
+        Remove,
+        Update
     }
 }
