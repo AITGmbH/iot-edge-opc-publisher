@@ -32,14 +32,14 @@ namespace OpcPublisher
         /// <summary>
         /// Handle publish event node method call.
         /// </summary>
-        public virtual async Task<MethodResponse> HandlePublishEventsMethodAsync(MethodRequest methodRequest,
-            object userContext)
+        public virtual async Task<MethodResponse> HandlePublishEventsMethodAsync(MethodRequest methodRequest, object userContext)
         {
             var logPrefix = "HandlePublishEventsMethodAsync:";
             var useSecurity = true;
             Guid endpointId = Guid.Empty;
             string endpointName = null;
             Uri endpointUri = null;
+            IOpcSession opcSession = null;
 
             OpcAuthenticationMode? desiredAuthenticationMode = null;
             EncryptedNetworkCredential desiredEncryptedCredential = null;
@@ -98,6 +98,14 @@ namespace OpcPublisher
                 statusResponse.Add(statusMessage);
                 statusCode = HttpStatusCode.InternalServerError;
             }
+            
+            // unpublish all removed events
+            // update means we unpublish and publish again
+            var eventsToRemove = publishEventsMethodData.OpcEvents.Where(n =>
+                n.OpcPublisherPublishState == OpcPublisherPublishState.Remove || n.OpcPublisherPublishState == OpcPublisherPublishState.Update);
+            var unpublishStatusResponse = new List<string>();
+            (statusCode, statusMessage, unpublishStatusResponse) = await UnpublishEventsAsync(endpointId, eventsToRemove).ConfigureAwait(false);
+            statusResponse.AddRange(unpublishStatusResponse);
 
             if (statusCode == HttpStatusCode.OK)
             {
@@ -116,7 +124,6 @@ namespace OpcPublisher
                     }
                     else
                     {
-                        IOpcSession opcSession = null;
                         /* we create new sessions in two cases
                            1. For new endpoints
                            2. For existing endpoints which do not have a OpcSession configured: 
@@ -172,108 +179,100 @@ namespace OpcPublisher
                         }
 
                         // process all nodes
-                        if (publishEventsMethodData?.OpcEvents != null)
+                        var eventsToAdd = publishEventsMethodData.OpcEvents.Where(n =>
+                            n.OpcPublisherPublishState == OpcPublisherPublishState.Add || n.OpcPublisherPublishState == OpcPublisherPublishState.Update);
+
+                        foreach (var eventNode in eventsToAdd)
                         {
-                            foreach (var eventNode in publishEventsMethodData?.OpcEvents)
+                            NodeId nodeId = null;
+                            ExpandedNodeId expandedNodeId = null;
+                            bool isNodeIdFormat;
+                            try
                             {
-                                NodeId nodeId = null;
-                                ExpandedNodeId expandedNodeId = null;
-                                bool isNodeIdFormat;
-                                try
+                                if (eventNode.Id.Contains("nsu=", StringComparison.InvariantCulture))
                                 {
-                                    if (eventNode.Id.Contains("nsu=", StringComparison.InvariantCulture))
-                                    {
-                                        expandedNodeId = ExpandedNodeId.Parse(eventNode.Id);
-                                        isNodeIdFormat = false;
-                                    }
-                                    else
-                                    {
-                                        nodeId = NodeId.Parse(eventNode.Id);
-                                        isNodeIdFormat = true;
-                                    }
+                                    expandedNodeId = ExpandedNodeId.Parse(eventNode.Id);
+                                    isNodeIdFormat = false;
                                 }
-                                catch (Exception e)
+                                else
                                 {
-                                    statusMessage = $"Exception in ({e.Message}) while formatting node '{eventNode.Id}'!";
-                                    Logger.Error(e, $"{logPrefix} {statusMessage}");
-                                    statusResponse.Add(statusMessage);
-                                    statusCode = HttpStatusCode.NotAcceptable;
-                                    continue;
-                                }
-
-                                try
-                                {
-                                    HttpStatusCode nodeStatusCode;
-                                    if (isNodeIdFormat)
-                                    {
-                                        // add the event node info to the subscription with the default publishing interval, execute synchronously
-                                        Logger.Debug(
-                                            $"{logPrefix} Request to monitor eventNode with NodeId '{eventNode.Id}'");
-                                        nodeStatusCode = await opcSession.AddEventNodeForMonitoringAsync(nodeId, null, 5000,
-                                                2000, eventNode.DisplayName, null, null, ShutdownTokenSource.Token,
-                                                null, publishEventsMethodData)
-                                            .ConfigureAwait(false);
-                                    }
-                                    else
-                                    {
-                                        // add the event node info to the subscription with the default publishing interval, execute synchronously
-                                        Logger.Debug(
-                                            $"{logPrefix} Request to monitor eventNode with ExpandedNodeId '{eventNode.Id}'");
-                                        nodeStatusCode = await opcSession.AddEventNodeForMonitoringAsync(null,
-                                                expandedNodeId, 5000, 2000, eventNode.DisplayName,
-                                                null, null, ShutdownTokenSource.Token, null,
-                                                publishEventsMethodData)
-                                            .ConfigureAwait(false);
-                                    }
-
-                                    // check and store a result message in case of an error
-                                    switch (nodeStatusCode)
-                                    {
-                                        case HttpStatusCode.OK:
-                                            statusMessage = $"'{eventNode.Id}': already monitored";
-                                            Logger.Debug($"{logPrefix} {statusMessage}");
-                                            statusResponse.Add(statusMessage);
-                                            break;
-
-                                        case HttpStatusCode.Accepted:
-                                            statusMessage = $"'{eventNode.Id}': added";
-                                            Logger.Debug($"{logPrefix} {statusMessage}");
-                                            statusResponse.Add(statusMessage);
-                                            break;
-
-                                        case HttpStatusCode.Gone:
-                                            statusMessage =
-                                                $"'{eventNode.Id}': session to endpoint does not exist anymore";
-                                            Logger.Debug($"{logPrefix} {statusMessage}");
-                                            statusResponse.Add(statusMessage);
-                                            statusCode = HttpStatusCode.Gone;
-                                            break;
-
-                                        case HttpStatusCode.InternalServerError:
-                                            statusMessage = $"'{eventNode.Id}': error while trying to configure";
-                                            Logger.Debug($"{logPrefix} {statusMessage}");
-                                            statusResponse.Add(statusMessage);
-                                            statusCode = HttpStatusCode.InternalServerError;
-                                            break;
-                                    }
-                                }
-                                catch (Exception e)
-                                {
-                                    statusMessage =
-                                        $"Exception ({e.Message}) while trying to configure publishing node '{eventNode.Id}'";
-                                    Logger.Error(e, $"{logPrefix} {statusMessage}");
-                                    statusResponse.Add(statusMessage);
-                                    statusCode = HttpStatusCode.InternalServerError;
+                                    nodeId = NodeId.Parse(eventNode.Id);
+                                    isNodeIdFormat = true;
                                 }
                             }
-                        }
-                        else
-                        {
-                            statusMessage =
-                                $"There are no EventConfigurations provided with the current call, provided JSON Data was: {methodRequest.DataAsJson}";
-                            Logger.Error($"{logPrefix} {statusMessage}");
-                            statusResponse.Add(statusMessage);
-                            statusCode = HttpStatusCode.BadRequest;
+                            catch (Exception e)
+                            {
+                                statusMessage = $"Exception in ({e.Message}) while formatting node '{eventNode.Id}'!";
+                                Logger.Error(e, $"{logPrefix} {statusMessage}");
+                                statusResponse.Add(statusMessage);
+                                statusCode = HttpStatusCode.NotAcceptable;
+                                continue;
+                            }
+
+                            try
+                            {
+                                HttpStatusCode nodeStatusCode;
+                                if (isNodeIdFormat)
+                                {
+                                    // add the event node info to the subscription with the default publishing interval, execute synchronously
+                                    Logger.Debug(
+                                        $"{logPrefix} Request to monitor eventNode with NodeId '{eventNode.Id}'");
+                                    nodeStatusCode = await opcSession.AddEventNodeForMonitoringAsync(nodeId, null, 5000,
+                                            2000, eventNode.DisplayName, null, null, ShutdownTokenSource.Token,
+                                            null, publishEventsMethodData)
+                                        .ConfigureAwait(false);
+                                }
+                                else
+                                {
+                                    // add the event node info to the subscription with the default publishing interval, execute synchronously
+                                    Logger.Debug(
+                                        $"{logPrefix} Request to monitor eventNode with ExpandedNodeId '{eventNode.Id}'");
+                                    nodeStatusCode = await opcSession.AddEventNodeForMonitoringAsync(null,
+                                            expandedNodeId, 5000, 2000, eventNode.DisplayName,
+                                            null, null, ShutdownTokenSource.Token, null,
+                                            publishEventsMethodData)
+                                        .ConfigureAwait(false);
+                                }
+
+                                // check and store a result message in case of an error
+                                switch (nodeStatusCode)
+                                {
+                                    case HttpStatusCode.OK:
+                                        statusMessage = $"'{eventNode.Id}': already monitored";
+                                        Logger.Debug($"{logPrefix} {statusMessage}");
+                                        statusResponse.Add(statusMessage);
+                                        break;
+
+                                    case HttpStatusCode.Accepted:
+                                        statusMessage = $"'{eventNode.Id}': added";
+                                        Logger.Debug($"{logPrefix} {statusMessage}");
+                                        statusResponse.Add(statusMessage);
+                                        break;
+
+                                    case HttpStatusCode.Gone:
+                                        statusMessage =
+                                            $"'{eventNode.Id}': session to endpoint does not exist anymore";
+                                        Logger.Debug($"{logPrefix} {statusMessage}");
+                                        statusResponse.Add(statusMessage);
+                                        statusCode = HttpStatusCode.Gone;
+                                        break;
+
+                                    case HttpStatusCode.InternalServerError:
+                                        statusMessage = $"'{eventNode.Id}': error while trying to configure";
+                                        Logger.Debug($"{logPrefix} {statusMessage}");
+                                        statusResponse.Add(statusMessage);
+                                        statusCode = HttpStatusCode.InternalServerError;
+                                        break;
+                                }
+                            }
+                            catch (Exception e)
+                            {
+                                statusMessage =
+                                    $"Exception ({e.Message}) while trying to configure publishing node '{eventNode.Id}'";
+                                Logger.Error(e, $"{logPrefix} {statusMessage}");
+                                statusResponse.Add(statusMessage);
+                                statusCode = HttpStatusCode.InternalServerError;
+                            }
                         }
                     }
                 }
@@ -301,6 +300,12 @@ namespace OpcPublisher
                 }
             }
 
+            // wait until the session is saved
+            if (opcSession != null)
+            {
+                await opcSession.ConnectAndMonitorAsync().ConfigureAwait(false);
+            }
+
             // build response
             publishedEventMethodResponse = new PublishNodesMethodResponseModel(endpointId.ToString());
             string resultString = statusCode == HttpStatusCode.OK || statusCode == HttpStatusCode.Accepted ?
@@ -316,6 +321,228 @@ namespace OpcPublisher
             MethodResponse methodResponse = new MethodResponse(result, (int)statusCode);
             Logger.Information($"{logPrefix} completed with result {statusCode.ToString()}");
             return methodResponse;
+        }
+
+        /// <summary>
+        /// Handle unpublish node method call.
+        /// </summary>
+        public virtual async Task<MethodResponse> HandleUnpublishEventsMethodAsync(MethodRequest methodRequest, object userContext)
+        {
+            string logPrefix = "HandleUnpublishEventsMethodAsync:";
+            Guid endpointId = Guid.Empty;
+            UnpublishNodesMethodRequestModel unpublishNodesMethodData = null;
+            HttpStatusCode statusCode = HttpStatusCode.OK;
+            List<string> statusResponse = new List<string>();
+            string statusMessage = string.Empty;
+            try
+            {
+                Logger.Debug($"{logPrefix} called");
+                unpublishNodesMethodData = JsonConvert.DeserializeObject<UnpublishNodesMethodRequestModel>(methodRequest.DataAsJson);
+                endpointId = new Guid(unpublishNodesMethodData.EndpointId);
+            }
+            catch (FormatException e)
+            {
+                statusMessage = $"Exception ({e.Message}) while parsing EndpointId '{unpublishNodesMethodData.EndpointId}'";
+                Logger.Error(e, $"{logPrefix} {statusMessage}");
+                statusResponse.Add(statusMessage);
+                statusCode = HttpStatusCode.InternalServerError;
+            }
+            catch (Exception e)
+            {
+                statusMessage = $"Exception ({e.Message}) while deserializing message payload";
+                Logger.Error(e, $"{logPrefix} {statusMessage}");
+                statusResponse.Add(statusMessage);
+                statusCode = HttpStatusCode.InternalServerError;
+            }
+
+            var unpublishStatusResponse = new List<string>();
+            (statusCode, statusMessage, unpublishStatusResponse) = await UnpublishEventsAsync(endpointId, unpublishNodesMethodData.OpcNodes).ConfigureAwait(false);
+            statusResponse.AddRange(unpublishStatusResponse);
+
+            // adjust response size
+            AdjustResponse(ref statusResponse);
+
+            // build response
+            string resultString = JsonConvert.SerializeObject(statusResponse);
+            byte[] result = Encoding.UTF8.GetBytes(resultString);
+            if (result.Length > MaxResponsePayloadLength)
+            {
+                Logger.Error($"{logPrefix} Response size is too long");
+                Array.Resize(ref result, result.Length > MaxResponsePayloadLength ? MaxResponsePayloadLength : result.Length);
+            }
+            MethodResponse methodResponse = new MethodResponse(result, (int)statusCode);
+            Logger.Information($"{logPrefix} completed with result {statusCode.ToString()}");
+            return methodResponse;
+        }
+
+        private async Task<(HttpStatusCode statusCode, string statusMessage, List<string> statusResponse)> UnpublishEventsAsync(Guid endpointId, IEnumerable<OpcNodeOnEndpointModel> opcNodes)
+        {
+            string logPrefix = "UnpublishEventsAsync:";
+            NodeId nodeId = null;
+            IOpcSession opcSession = null;
+            ExpandedNodeId expandedNodeId = null;
+            bool isNodeIdFormat = true;
+            HttpStatusCode nodeStatusCode = HttpStatusCode.InternalServerError;
+            HttpStatusCode statusCode = HttpStatusCode.OK;
+            List<string> statusResponse = new List<string>();
+            string statusMessage = string.Empty;
+
+            if (statusCode == HttpStatusCode.OK)
+            {
+                try
+                {
+                    await NodeConfiguration.OpcSessionsListSemaphore.WaitAsync().ConfigureAwait(false);
+                    if (ShutdownTokenSource.IsCancellationRequested)
+                    {
+                        statusMessage = $"Publisher is in shutdown";
+                        Logger.Error($"{logPrefix} {statusMessage}");
+                        statusResponse.Add(statusMessage);
+                        statusCode = HttpStatusCode.Gone;
+                    }
+                    else
+                    {
+                        // find the session we need to monitor the node
+                        try
+                        {
+                            opcSession = NodeConfiguration.OpcSessions.FirstOrDefault(s => s.EndpointId.Equals(endpointId));
+                        }
+                        catch
+                        {
+                            opcSession = null;
+                        }
+
+                        if (opcSession == null)
+                        {
+                            // do nothing if there is no session for this endpoint.
+                            statusMessage = $"Session for endpoint '{endpointId.ToString()}' not found.";
+                            Logger.Error($"{logPrefix} {statusMessage}");
+                            statusResponse.Add(statusMessage);
+                            statusCode = HttpStatusCode.Gone;
+                        }
+                        else
+                        {
+
+                            // unpublish all nodes on one endpoint or nodes requested
+                            if (opcNodes != null && opcNodes.Any())
+                            {
+                                foreach (var node in opcNodes)
+                                {
+                                    // support legacy format
+                                    if (string.IsNullOrEmpty(node.Id) && !string.IsNullOrEmpty(node.ExpandedNodeId))
+                                    {
+                                        node.Id = node.ExpandedNodeId;
+                                    }
+
+                                    try
+                                    {
+                                        if (node.Id.Contains("nsu=", StringComparison.InvariantCulture))
+                                        {
+                                            expandedNodeId = ExpandedNodeId.Parse(node.Id);
+                                            isNodeIdFormat = false;
+                                        }
+                                        else
+                                        {
+                                            nodeId = NodeId.Parse(node.Id);
+                                            isNodeIdFormat = true;
+                                        }
+                                    }
+                                    catch (Exception e)
+                                    {
+                                        statusMessage = $"Exception ({e.Message}) while formatting node '{node.Id}'!";
+                                        Logger.Error(e, $"{logPrefix} {statusMessage}");
+                                        statusResponse.Add(statusMessage);
+                                        statusCode = HttpStatusCode.NotAcceptable;
+                                        continue;
+                                    }
+
+                                    try
+                                    {
+                                        if (isNodeIdFormat)
+                                        {
+                                            // stop monitoring the node, execute synchronously
+                                            Logger.Information($"{logPrefix} Request to stop monitoring item with NodeId '{nodeId.ToString()}')");
+                                            nodeStatusCode = await opcSession.RequestEventNodeRemovalAsync(nodeId, null, ShutdownTokenSource.Token).ConfigureAwait(false);
+                                        }
+                                        else
+                                        {
+                                            // stop monitoring the node, execute synchronously
+                                            Logger.Information($"{logPrefix} Request to stop monitoring item with ExpandedNodeId '{expandedNodeId.ToString()}')");
+                                            nodeStatusCode = await opcSession.RequestEventNodeRemovalAsync(null, expandedNodeId, ShutdownTokenSource.Token).ConfigureAwait(false);
+                                        }
+
+                                        // check and store a result message in case of an error
+                                        switch (nodeStatusCode)
+                                        {
+                                            case HttpStatusCode.OK:
+                                                statusMessage = $"Id '{node.Id}': was not configured";
+                                                Logger.Debug($"{logPrefix} {statusMessage}");
+                                                statusResponse.Add(statusMessage);
+                                                break;
+
+                                            case HttpStatusCode.Accepted:
+                                                statusMessage = $"Id '{node.Id}': tagged for removal";
+                                                Logger.Debug($"{logPrefix} {statusMessage}");
+                                                statusResponse.Add(statusMessage);
+                                                break;
+
+                                            case HttpStatusCode.Gone:
+                                                statusMessage = $"Id '{node.Id}': session to endpoint does not exist anymore";
+                                                Logger.Debug($"{logPrefix} {statusMessage}");
+                                                statusResponse.Add(statusMessage);
+                                                statusCode = HttpStatusCode.Gone;
+                                                break;
+
+                                            case HttpStatusCode.InternalServerError:
+                                                statusMessage = $"Id '{node.Id}': error while trying to remove";
+                                                Logger.Debug($"{logPrefix} {statusMessage}");
+                                                statusResponse.Add(statusMessage);
+                                                statusCode = HttpStatusCode.InternalServerError;
+                                                break;
+                                        }
+                                    }
+                                    catch (Exception e)
+                                    {
+                                        statusMessage = $"Exception ({e.Message}) while trying to tag node '{node.Id}' for removal";
+                                        Logger.Error(e, $"{logPrefix} {statusMessage}");
+                                        statusResponse.Add(statusMessage);
+                                        statusCode = HttpStatusCode.InternalServerError;
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+                catch (AggregateException e)
+                {
+                    foreach (Exception ex in e.InnerExceptions)
+                    {
+                        Logger.Error(ex, $"{logPrefix} Exception");
+                    }
+                    statusMessage = $"EndpointUrl: '{endpointId}': exception while trying to unpublish";
+                    Logger.Error(e, $"{logPrefix} {statusMessage}");
+                    statusResponse.Add(statusMessage);
+                    statusCode = HttpStatusCode.InternalServerError;
+                }
+                catch (Exception e)
+                {
+                    statusMessage = $"EndpointUrl: '{endpointId}': exception ({e.Message}) while trying to unpublish";
+                    Logger.Error(e, $"{logPrefix} {statusMessage}");
+                    statusResponse.Add(statusMessage);
+                    statusCode = HttpStatusCode.InternalServerError;
+                }
+                finally
+                {
+                    NodeConfiguration.OpcSessionsListSemaphore.Release();
+                }
+            }
+
+            // wait until the session is saved
+            if (opcSession != null)
+            {
+                await opcSession.ConnectAndMonitorAsync().ConfigureAwait(false);
+            }
+
+            return (statusCode, statusMessage, statusResponse);
         }
 
         /// <summary>

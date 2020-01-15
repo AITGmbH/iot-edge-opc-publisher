@@ -151,6 +151,7 @@
             IotHubDirectMethods.Add("PublishNodes", HandlePublishNodesMethodAsync);
             IotHubDirectMethods.Add("PublishEvents", HandlePublishEventsMethodAsync);
             IotHubDirectMethods.Add("UnpublishNodes", HandleUnpublishNodesMethodAsync);
+            IotHubDirectMethods.Add("UnublishEvents", HandleUnpublishEventsMethodAsync);
             IotHubDirectMethods.Add("UnpublishAllNodes", HandleUnpublishAllNodesMethodAsync);
             IotHubDirectMethods.Add("GetConfiguredEndpoints", HandleGetConfiguredEndpointsMethodAsync);
             IotHubDirectMethods.Add("DeleteConfiguredEndpoint", HandleDeleteConfiguredEndpointMethodAsync);
