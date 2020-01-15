@@ -510,7 +510,8 @@ namespace OpcPublisher
                                             publisherConfigFileEntryLegacy.OpcAuthenticationMode,
                                             publisherConfigFileEntryLegacy.EncryptedAuthCredential,
                                             opcEvent.Id,
-                                            opcEvent.DisplayName,
+                                            opcEvent.EventNotifierId,
+                                            opcEvent.Key,
                                             opcEvent.SelectClauses,
                                             opcEvent.WhereClause,
                                             opcEvent.IotCentralEventPublishMode));
@@ -773,14 +774,14 @@ namespace OpcPublisher
                     }
 
                     // create a subscription for each event source
-                    var distinctEventSources = _eventConfiguration.Where(n => n.EndpointId.Equals(endpointId.ToString())).Select(c => c.Id).Distinct();
+                    var distinctEventSources = _eventConfiguration.Where(n => n.EndpointId.Equals(endpointId.ToString())).Select(c => c.EventNotifierId).Distinct();
                     foreach (var distinctEventSource in distinctEventSources)
                     {
                         // create a subscription for the event source and add it to ´the session
                         IOpcSubscription opcSubscription = new OpcSubscription(distinctEventSource);
 
                         // add all event subscriptions for this event source in the subscription.
-                        var eventsWithTheSameSource = _eventConfiguration.Where(n => n.EndpointId.Equals(endpointId.ToString())).Where(n => n.Id == distinctEventSource);
+                        var eventsWithTheSameSource = _eventConfiguration.Where(n => n.EndpointId.Equals(endpointId.ToString())).Where(n => n.EventNotifierId == distinctEventSource);
                         foreach (var opcEvent in eventsWithTheSameSource)
                         {
                             if (opcEvent.SelectClauses == null || opcEvent.SelectClauses.Count == 0)

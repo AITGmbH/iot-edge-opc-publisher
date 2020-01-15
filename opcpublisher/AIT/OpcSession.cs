@@ -20,9 +20,9 @@
         /// one is created.
         /// </summary>
         public async Task<HttpStatusCode> AddEventNodeForMonitoringAsync(NodeId nodeId, ExpandedNodeId expandedNodeId,
-            int? opcPublishingInterval, int? opcSamplingInterval, string displayName,
+            int? opcPublishingInterval, int? opcSamplingInterval, string key,
             int? heartbeatInterval, bool? skipFirst, CancellationToken ct, IotCentralItemPublishMode? iotCentralItemPublishMode,
-            PublishNodesMethodRequestModel publishEventsMethodData)
+            PublishNodesMethodRequestModel publishEventsMethodData, OpcEventOnEndpointModel model)
         {
             string logPrefix = "AddEventNodeForMonitoringAsync:";
             bool sessionLocked = false;
@@ -91,14 +91,14 @@
                     if (expandedNodeId == null)
                     {
                         opcMonitoredItem = new OpcMonitoredItem(new EventConfigurationModel(publishEventsMethodData.EndpointId, publishEventsMethodData.EndpointName, publishEventsMethodData.EndpointUrl, publishEventsMethodData.UseSecurity, publishEventsMethodData.OpcAuthenticationMode ?? OpcAuthenticationMode.Anonymous, encryptedCredentials,
-                            publishEventsMethodData.OpcEvents[0].Id, publishEventsMethodData.OpcEvents[0].DisplayName, publishEventsMethodData.OpcEvents[0].SelectClauses,
-                            publishEventsMethodData.OpcEvents[0].WhereClause, publishEventsMethodData.OpcEvents[0].IotCentralEventPublishMode), EndpointId, EndpointUrl); ;
+                            model.Id, model.EventNotifierId, model.Key, model.SelectClauses,
+                            model.WhereClause, model.IotCentralEventPublishMode), EndpointId, EndpointUrl); ;
                     }
                     else
                     {
                         opcMonitoredItem = new OpcMonitoredItem(new EventConfigurationModel(publishEventsMethodData.EndpointId, publishEventsMethodData.EndpointName, publishEventsMethodData.EndpointUrl, publishEventsMethodData.UseSecurity, publishEventsMethodData.OpcAuthenticationMode ?? OpcAuthenticationMode.Anonymous, encryptedCredentials,
-                            expandedNodeId.ToString(), publishEventsMethodData.OpcEvents[0].DisplayName, publishEventsMethodData.OpcEvents[0].SelectClauses,
-                            publishEventsMethodData.OpcEvents[0].WhereClause, publishEventsMethodData.OpcEvents[0].IotCentralEventPublishMode), EndpointId, EndpointUrl);
+                            model.Id, expandedNodeId.ToString(), model.Key, model.SelectClauses,
+                            model.WhereClause, model.IotCentralEventPublishMode), EndpointId, EndpointUrl);
                     }
                     opcEventSubscription.OpcMonitoredItems.Add(opcMonitoredItem);
                     Interlocked.Increment(ref NodeConfigVersion);
@@ -255,18 +255,18 @@
                                 }
                             }
 
-                            // if configured, get the DisplayName for the node, otherwise use the nodeId
+                            // if configured, get the key for the node, otherwise use the nodeId
                             Node node;
-                            if (string.IsNullOrEmpty(unmonitoredEvent.DisplayName))
+                            if (string.IsNullOrEmpty(unmonitoredEvent.Key))
                             {
                                 if (FetchOpcNodeDisplayName == true)
                                 {
                                     node = OpcUaClientSession.ReadNode(currentNodeId);
-                                    unmonitoredEvent.DisplayName = node.DisplayName.Text ?? currentNodeId.ToString();
+                                    unmonitoredEvent.Key = node.DisplayName.Text ?? currentNodeId.ToString();
                                 }
                                 else
                                 {
-                                    unmonitoredEvent.DisplayName = currentNodeId.ToString();
+                                    unmonitoredEvent.Key = currentNodeId.ToString();
                                 }
                             }
 
@@ -335,7 +335,7 @@
                             {
                                 StartNodeId = currentNodeId,
                                 AttributeId = Attributes.EventNotifier,
-                                DisplayName = unmonitoredEvent.DisplayName,
+                                DisplayName = unmonitoredEvent.Key,
                                 MonitoringMode = unmonitoredEvent.MonitoringMode,
                                 SamplingInterval = 0,
                                 QueueSize = unmonitoredEvent.QueueSize,
@@ -413,7 +413,7 @@
             }
         }
 
-        public async Task<HttpStatusCode> RequestEventNodeRemovalAsync(NodeId nodeId, ExpandedNodeId expandedNodeId, CancellationToken ct, bool takeLock = true)
+        public async Task<HttpStatusCode> RequestEventNodeRemovalAsync(Guid id, CancellationToken ct, bool takeLock = true)
         {
             HttpStatusCode result = HttpStatusCode.Gone;
             bool sessionLocked = false;
@@ -429,27 +429,10 @@
                     }
                 }
 
-                // create objects for publish check
-                ExpandedNodeId expandedNodeIdCheck = expandedNodeId;
-                NodeId nodeIdCheck = nodeId;
-                if (State == SessionState.Connected)
-                {
-                    if (expandedNodeId == null)
-                    {
-                        string namespaceUri = _namespaceTable.ToArray().ElementAtOrDefault(nodeId.NamespaceIndex);
-                        expandedNodeIdCheck = new ExpandedNodeId(nodeIdCheck, namespaceUri, 0);
-                    }
-                    if (nodeId == null)
-                    {
-                        nodeIdCheck = new NodeId(expandedNodeId.Identifier, (ushort)(_namespaceTable.GetIndex(expandedNodeId.NamespaceUri)));
-                    }
-
-                }
-
                 // if node is not published return success
-                if (!IsNodePublishedInSessionInternal(nodeIdCheck, expandedNodeIdCheck))
+                if (!IsNodePublishedInSessionInternal(id))
                 {
-                    Logger.Information($"RequestEventNodeRemovalAsync: Node '{(expandedNodeId == null ? nodeId.ToString() : expandedNodeId.ToString())}' is not monitored.");
+                    Logger.Information($"RequestEventNodeRemovalAsync: Event '{id}' is not monitored.");
                     return HttpStatusCode.OK;
                 }
 
@@ -457,19 +440,19 @@
                 // if the node to tag is specified as NodeId, it will also tag nodes configured in ExpandedNodeId format.
                 foreach (var opcEventSubscription in OpcEventSubscriptions)
                 {
-                    var opcMonitoredItems = opcEventSubscription.OpcMonitoredItems.Where(m => { return m.IsMonitoringThisNode(nodeIdCheck, expandedNodeIdCheck, _namespaceTable); });
+                    var opcMonitoredItems = opcEventSubscription.OpcMonitoredItems.Where(m => m.EventId.Equals(id));
                     foreach (var opcMonitoredItem in opcMonitoredItems)
                     {
                         // tag it for removal.
                         opcMonitoredItem.State = OpcMonitoredItemState.RemovalRequested;
-                        Logger.Information($"RequestEventNodeRemovalAsync: Node with id '{(expandedNodeId == null ? nodeId.ToString() : expandedNodeId.ToString())}' tagged to stop monitoring.");
+                        Logger.Information($"RequestEventNodeRemovalAsync: Event with id '{id}' tagged to stop monitoring.");
                         result = HttpStatusCode.Accepted;
                     }
                 }
             }
             catch (Exception e)
             {
-                Logger.Error(e, $"RequestEventNodeRemovalAsync: Exception while trying to tag node '{(expandedNodeId == null ? nodeId.ToString() : expandedNodeId.ToString())}' to stop monitoring.");
+                Logger.Error(e, $"RequestEventNodeRemovalAsync: Exception while trying to tag node '{id}' to stop monitoring.");
                 result = HttpStatusCode.InternalServerError;
             }
             finally

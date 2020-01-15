@@ -89,8 +89,8 @@ namespace OpcPublisher.Tests.AIT
                 _configurationFileEntries = JsonConvert.DeserializeObject<List<PublisherConfigurationFileEntryLegacyModel>>(File.ReadAllText(PublisherNodeConfiguration.PublisherNodeConfigurationFilename));
 
                 Assert.True(_configurationFileEntries[0].OpcEvents.Count == 1);
-                Assert.True(_configurationFileEntries[0].OpcEvents[0].Id == "i=2253");
-                Assert.True(_configurationFileEntries[0].OpcEvents[0].DisplayName == "SimpleEventServerEvents");
+                Assert.True(_configurationFileEntries[0].OpcEvents[0].EventNotifierId == "i=2253");
+                Assert.True(_configurationFileEntries[0].OpcEvents[0].Key == "SimpleEventServerEvents");
                 Assert.True(_configurationFileEntries[0].OpcEvents[0].SelectClauses.Count == 4);
                 Assert.True(_configurationFileEntries[0].OpcEvents[0].SelectClauses[0].TypeId == "i=2041");
                 Assert.True(_configurationFileEntries[0].OpcEvents[0].SelectClauses[0].IotCentralEventPublishMode ==
@@ -176,8 +176,8 @@ namespace OpcPublisher.Tests.AIT
 
 
                 Assert.True(_configurationFileEntries[0].OpcEvents.Count == 1);
-                Assert.True(_configurationFileEntries[0].OpcEvents[0].Id == "i=2253");
-                Assert.True(_configurationFileEntries[0].OpcEvents[0].DisplayName == "SimpleEventServerEvents");
+                Assert.True(_configurationFileEntries[0].OpcEvents[0].EventNotifierId == "i=2253");
+                Assert.True(_configurationFileEntries[0].OpcEvents[0].Key == "SimpleEventServerEvents");
                 Assert.True(_configurationFileEntries[0].OpcEvents[0].IotCentralEventPublishMode == IotCentralEventPublishMode.Event);
 
                 Assert.True(_configurationFileEntries[0].OpcEvents[0].SelectClauses.Count == 4);
@@ -265,8 +265,8 @@ namespace OpcPublisher.Tests.AIT
 
 
                 Assert.True(_configurationFileEntries[0].OpcEvents.Count == 1);
-                Assert.True(_configurationFileEntries[0].OpcEvents[0].Id == "i=2253");
-                Assert.True(_configurationFileEntries[0].OpcEvents[0].DisplayName == "SimpleEventServerEvents");
+                Assert.True(_configurationFileEntries[0].OpcEvents[0].EventNotifierId == "i=2253");
+                Assert.True(_configurationFileEntries[0].OpcEvents[0].Key == "SimpleEventServerEvents");
                 Assert.True(_configurationFileEntries[0].OpcEvents[0].IotCentralEventPublishMode == IotCentralEventPublishMode.Event);
 
                 Assert.True(_configurationFileEntries[0].OpcEvents[0].SelectClauses.Count == 4);

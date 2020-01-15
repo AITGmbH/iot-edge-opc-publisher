@@ -1298,6 +1298,28 @@ namespace OpcPublisher
         }
 
         /// <summary>
+        /// Checks if the node specified by either the given NodeId or ExpandedNodeId on the given endpoint is published in the session. Caller to take session semaphore.
+        /// </summary>
+        private bool IsNodePublishedInSessionInternal(Guid eventId)
+        {
+            try
+            {
+                foreach (var opcSubscription in OpcEventSubscriptions)
+                {
+                    if (opcSubscription.OpcMonitoredItems.Any(m => m.EventId.Equals(eventId)))
+                    {
+                        return true;
+                    }
+                }
+            }
+            catch (Exception e)
+            {
+                Logger.Error(e, "Exception");
+            }
+            return false;
+        }
+
+        /// <summary>
         /// Checks if the node specified by either the given NodeId or ExpandedNodeId on the given endpoint is published in the session.
         /// </summary>
         public bool IsNodePublishedInSession(NodeId nodeId, ExpandedNodeId expandedNodeId)

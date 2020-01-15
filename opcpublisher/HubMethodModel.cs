@@ -243,13 +243,14 @@ namespace OpcPublisher
     {
         public UnpublishNodesMethodRequestModel(string endpointId)
         {
-            OpcNodes = new List<OpcNodeOnEndpointModel>();
             EndpointId = endpointId;
         }
 
         public string EndpointId { get; set; }
 
-        public List<OpcNodeOnEndpointModel> OpcNodes { get; }
+        public List<OpcNodeOnEndpointModel> OpcNodes { get; } = new List<OpcNodeOnEndpointModel>();
+        
+        public List<OpcEventOnEndpointModel> OpcEvents { get; } = new List<OpcEventOnEndpointModel>();
     }
 
     /// <summary>

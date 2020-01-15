@@ -391,6 +391,11 @@ namespace OpcPublisher
         /// </summary>
         public string Id { get; set; }
 
+        /// <summary>
+        /// The unique id of the event if this monitored node is an event.
+        /// </summary>
+        public Guid EventId { get; set; }
+
         // todo use the same model for nodes as we use now for events to store the original setting
         /// <summary>
         /// The OPC UA identifier of the node as ExpandedNodeId ("nsu=").
@@ -485,7 +490,9 @@ namespace OpcPublisher
         /// </summary>
         public OpcMonitoredItem(EventConfigurationModel opcEvent, Guid sessionEndpointId, string sessionEndpointUrl)
         {
-            Id = opcEvent.Id;
+            Id = opcEvent.EventNotifierId;
+            Key = opcEvent.Key;
+            EventId = opcEvent.Id;
             if (Id.StartsWith("nsu=", StringComparison.InvariantCulture))
             {
                 ConfigType = OpcMonitoredItemConfigurationType.ExpandedNodeId;
@@ -494,8 +501,8 @@ namespace OpcPublisher
             {
                 ConfigType = OpcMonitoredItemConfigurationType.NodeId;
             }
-            DisplayName = opcEvent.DisplayName;
-            DisplayNameFromConfiguration = string.IsNullOrEmpty(opcEvent.DisplayName) ? false : true;
+            DisplayName = opcEvent.Key;
+            DisplayNameFromConfiguration = string.IsNullOrEmpty(opcEvent.Key) ? false : true;
             EventConfiguration = opcEvent;
             State = OpcMonitoredItemState.Unmonitored;
             AttributeId = Attributes.EventNotifier;

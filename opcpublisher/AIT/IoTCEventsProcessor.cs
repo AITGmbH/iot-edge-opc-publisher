@@ -328,7 +328,7 @@ namespace OpcPublisher
                 using (JsonWriter jsonWriter = new JsonTextWriter(jsonStringWriter))
                 {
                     await jsonWriter.WriteStartObjectAsync(shutdownToken).ConfigureAwait(false);
-                    await jsonWriter.WritePropertyNameAsync(messageData.DisplayName, shutdownToken).ConfigureAwait(false);
+                    await jsonWriter.WritePropertyNameAsync(messageData.Key, shutdownToken).ConfigureAwait(false);
                     var eventValues = string.Join(",", messageData.EventValues.Select(s => new {
                         s.Name,
                         s.Value

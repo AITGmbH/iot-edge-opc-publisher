@@ -328,9 +328,14 @@ namespace OpcPublisher
         public EncryptedNetworkCredential EncryptedAuthCredential { get; set; }
 
         /// <summary>
+        /// The unique event id
+        /// </summary>
+        public Guid Id { get; set; }
+
+        /// <summary>
         /// The event source to monitor.
         /// </summary>
-        public string Id { get; set; }
+        public string EventNotifierId { get; set; }
 
         /// <summary>
         /// This property is used to publish all event select clauses as IoT Central event.
@@ -340,7 +345,7 @@ namespace OpcPublisher
         /// <summary>
         /// The display name to use for the node in telemetry events.
         /// </summary>
-        public string DisplayName { get; set; }
+        public string Key { get; set; }
 
         /// <summary>
         /// The select clauses of the event.
@@ -362,7 +367,7 @@ namespace OpcPublisher
             bool? useSecurity,
             OpcAuthenticationMode opcAuthenticationMode, 
             EncryptedNetworkCredential encryptedAuthCredential, 
-            string id, string displayName,
+            Guid id, string eventNotifierId, string key,
             List<SelectClause> selectClauses,
             List<WhereClauseElement> whereClause,
             IotCentralEventPublishMode? iotCentralEventPublishMode = null)
@@ -374,7 +379,8 @@ namespace OpcPublisher
             OpcAuthenticationMode = opcAuthenticationMode;
             EncryptedAuthCredential = encryptedAuthCredential;
             Id = id;
-            DisplayName = displayName;
+            EventNotifierId = eventNotifierId;
+            Key = key;
             IotCentralEventPublishMode = iotCentralEventPublishMode;
             SelectClauses = selectClauses;
             WhereClause = whereClause;
@@ -769,16 +775,22 @@ namespace OpcPublisher
     public class OpcEventOnEndpointModel
     {
         /// <summary>
+        /// The unique id of the event.
+        /// </summary>
+        [JsonProperty(Required = Required.Always)]
+        public Guid Id;
+
+        /// <summary>
         /// The event source of the event. This is a NodeId, which has the SubscribeToEvents bit set in the EventNotifier attribute.
         /// </summary>
         [JsonProperty(Required = Required.Always)]
-        public string Id;
+        public string EventNotifierId;
 
         /// <summary>
         /// A display name which can be added when publishing the event information.
         /// </summary>
         [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
-        public string DisplayName;
+        public string Key;
 
         /// <summary>
         /// This property is used to publish all event select clauses as IoT Central event.
@@ -811,8 +823,9 @@ namespace OpcPublisher
         /// </summary>
         public OpcEventOnEndpointModel()
         {
-            Id = string.Empty;
-            DisplayName = string.Empty;
+            Id = Guid.NewGuid();
+            EventNotifierId = string.Empty;
+            Key = string.Empty;
             SelectClauses = new List<SelectClause>();
             WhereClause = new List<WhereClauseElement>();
         }
@@ -823,12 +836,12 @@ namespace OpcPublisher
         public OpcEventOnEndpointModel(EventConfigurationModel eventConfiguration, OpcPublisherPublishState opcPublisherPublishState = OpcPublisherPublishState.None)
         {
             Id = eventConfiguration.Id;
-            DisplayName = eventConfiguration.DisplayName;
+            EventNotifierId = eventConfiguration.EventNotifierId;
+            Key = eventConfiguration.Key;
             IotCentralEventPublishMode = eventConfiguration.IotCentralEventPublishMode;
             SelectClauses = eventConfiguration.SelectClauses;
             WhereClause = eventConfiguration.WhereClause;
             OpcPublisherPublishState = opcPublisherPublishState;
         }
-
     }
 }
