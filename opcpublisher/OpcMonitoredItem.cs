@@ -685,7 +685,7 @@ namespace OpcPublisher
                 }
                 else
                 {
-                    Logger.Debug($"EnqueueProperty a new message from subscription {(monitoredItem.Subscription == null ? "removed" : monitoredItem.Subscription.Id.ToString(CultureInfo.InvariantCulture))}");
+                    Logger.Debug($"Handling a new message from subscription {(monitoredItem.Subscription == null ? "removed" : monitoredItem.Subscription.Id.ToString(CultureInfo.InvariantCulture))}");
                     Logger.Debug($" with publishing interval: {monitoredItem?.Subscription?.PublishingInterval} and sampling interval: {monitoredItem?.SamplingInterval}):");
                 }
 
@@ -794,28 +794,32 @@ namespace OpcPublisher
                 eventMessageData.DisplayName = monitoredItem.DisplayName;
                 eventMessageData.NodeId = monitoredItem.StartNodeId.ToString();
                 eventMessageData.IotCentralEventPublishMode = EventConfiguration.IotCentralEventPublishMode;
-                foreach (var eventList in notificationData)
-                {
-                    EventNotificationList eventNotificationList = eventList.Body as EventNotificationList;
-                    foreach (var eventFieldList in eventNotificationList.Events)
-                    {
-                        int i = 0;
-                        foreach (var eventField in eventFieldList.EventFields)
-                        {
-                            // prepare event field values
-                            EventValue eventValue = new EventValue();
-                            eventValue.Name = monitoredItem.GetFieldName(i++);
 
-                            // use the Value as reported in the notification event argument encoded with the OPC UA JSON endcoder
-                            DataValue value = new DataValue(eventField);
-                            string encodedValue = string.Empty;
-                            EncodeValue(value, monitoredItem.Subscription.Session.MessageContext, out encodedValue, out bool preserveValueQuotes);
-                            eventValue.Value = encodedValue;
-                            eventValue.PreserveValueQuotes = preserveValueQuotes;
-                            var selectClause = EventConfiguration.SelectClauses.SingleOrDefault(w => w.BrowsePaths.Any(x => eventValue.Name.Contains(x)));
-                            eventMessageData.EventValues.Add(eventValue);
-                            Logger.Debug($"Event notification field name: '{eventValue.Name}', value: '{eventValue.Value}'");
-                        }
+                int i = 0;
+                foreach (var eventField in notificationValue.EventFields)
+                {
+                    // prepare event field values
+                    EventValue eventValue = new EventValue();
+                    eventValue.Name = monitoredItem.GetFieldName(i++);
+                    if (string.IsNullOrEmpty(eventValue.Name))
+                    {
+                        // ignore event field
+                        continue;
+                    }
+
+                    // use the Value as reported in the notification event argument encoded with the OPC UA JSON endcoder
+                    DataValue value = new DataValue(eventField);
+                    string encodedValue = string.Empty;
+                    EncodeValue(value, monitoredItem.Subscription.Session.MessageContext, out encodedValue, out bool preserveValueQuotes);
+                    eventValue.Value = encodedValue;
+                    eventValue.PreserveValueQuotes = preserveValueQuotes;
+                    
+                    var selectClause = EventConfiguration.SelectClauses.SingleOrDefault(w => w.BrowsePaths.Any(x => eventValue.Name.Contains(x)));
+                    if (selectClause != null)
+                    {
+                        eventValue.Name = selectClause.Key;
+                        eventMessageData.EventValues.Add(eventValue);
+                        Logger.Debug($"Event notification field name: '{eventValue.Name}', value: '{eventValue.Value}'");
                     }
                 }
 
@@ -826,7 +830,7 @@ namespace OpcPublisher
                 }
                 else
                 {
-                    Logger.Debug($"EnqueueProperty a new message from subscription {(monitoredItem.Subscription == null ? "removed" : monitoredItem.Subscription.Id.ToString(CultureInfo.InvariantCulture))}");
+                    Logger.Debug($"Handling a new message from subscription {(monitoredItem.Subscription == null ? "removed" : monitoredItem.Subscription.Id.ToString(CultureInfo.InvariantCulture))}");
                     Logger.Debug($" with publishing interval: {monitoredItem?.Subscription?.PublishingInterval} and sampling interval: {monitoredItem?.SamplingInterval}):");
                 }
 
