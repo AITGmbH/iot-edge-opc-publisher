@@ -781,11 +781,6 @@ namespace OpcPublisher
                     return;
                 }
 
-                if (!(message.NotificationData is ExtensionObjectCollection notificationData) || notificationData.Count == 0)
-                {
-                    return;
-                }
-
                 EventMessageData eventMessageData = new EventMessageData();
                 eventMessageData.EndpointId = EndpointId.ToString();
                 eventMessageData.EndpointUrl = EndpointUrl;
@@ -818,9 +813,10 @@ namespace OpcPublisher
                     if (selectClause != null)
                     {
                         eventValue.Name = selectClause.Key;
-                        eventMessageData.EventValues.Add(eventValue);
-                        Logger.Debug($"Event notification field name: '{eventValue.Name}', value: '{eventValue.Value}'");
                     }
+
+                    eventMessageData.EventValues.Add(eventValue);
+                    Logger.Debug($"Event notification field name: '{eventValue.Name}', value: '{eventValue.Value}'");
                 }
 
                 // add message to fifo send queue
