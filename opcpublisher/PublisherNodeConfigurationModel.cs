@@ -520,9 +520,10 @@ namespace OpcPublisher
         /// <summary>
         /// Ctor of the object.
         /// </summary>
-        public SelectClause(string typeId, List<string> browsePaths, string attributeId, string indexRange, IotCentralEventPublishMode iotCentralEventPublishMode)
+        public SelectClause(string typeId, string key, List<string> browsePaths, string attributeId, string indexRange)
         {
             TypeId = typeId;
+            Key = key;
             BrowsePaths = browsePaths;
 
             AttributeId = attributeId;
@@ -530,8 +531,6 @@ namespace OpcPublisher
 
             IndexRange = indexRange;
             indexRange.ResolveIndexRange();
-
-            IotCentralEventPublishMode = iotCentralEventPublishMode;
         }
 
         /// <summary>
@@ -541,11 +540,10 @@ namespace OpcPublisher
         public string TypeId;
 
         /// <summary>
-        /// Configure how to publish the data into IoT-Central
+        /// The key of the node.
         /// </summary>
-        [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
-        [JsonConverter(typeof(StringEnumConverter))]
-        public IotCentralEventPublishMode IotCentralEventPublishMode;
+        [JsonProperty(Required = Required.Always)]
+        public string Key;
 
         /// <summary>
         /// A list of QualifiedName's describing the field to be published.

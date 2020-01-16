@@ -519,7 +519,7 @@ namespace OpcPublisher
             HeartbeatInterval = 0;
             HeartbeatIntervalFromConfiguration = false;
             SkipFirst = false;
-            SkipFirstFromConfiguration = false;
+            SkipFirstFromConfiguration = false;            
         }
 
         /// <summary>
@@ -813,8 +813,6 @@ namespace OpcPublisher
                             eventValue.Value = encodedValue;
                             eventValue.PreserveValueQuotes = preserveValueQuotes;
                             var selectClause = EventConfiguration.SelectClauses.SingleOrDefault(w => w.BrowsePaths.Any(x => eventValue.Name.Contains(x)));
-                            if(selectClause != null)
-                                eventValue.IotCentralEventPublishMode = selectClause.IotCentralEventPublishMode;
                             eventMessageData.EventValues.Add(eventValue);
                             Logger.Debug($"Event notification field name: '{eventValue.Name}', value: '{eventValue.Value}'");
                         }
@@ -838,7 +836,7 @@ namespace OpcPublisher
                 if (SendHub != null)
                 {
                     Logger.Debug("SendHub is used for Telemetry sending");
-                    if (messageData.EventMessageData.EventValues.Any(a => a.IotCentralEventPublishMode == IotCentralEventPublishMode.Property))
+                    if (messageData.EventMessageData.IotCentralEventPublishMode == IotCentralEventPublishMode.Property)
                         SendHub.EnqueueProperty(messageData);
                     else if(messageData.EventMessageData.IotCentralEventPublishMode == IotCentralEventPublishMode.Event)
                         SendHub.EnqueueEvent(messageData);
@@ -847,7 +845,7 @@ namespace OpcPublisher
                 }
                 else
                 {
-                    if (messageData.EventMessageData.EventValues.Any(a => a.IotCentralEventPublishMode == IotCentralEventPublishMode.Property))
+                    if (messageData.EventMessageData.IotCentralEventPublishMode == IotCentralEventPublishMode.Property)
                         Hub.EnqueueProperty(messageData);
                     else if (messageData.EventMessageData.IotCentralEventPublishMode == IotCentralEventPublishMode.Event)
                         Hub.EnqueueEvent(messageData);
