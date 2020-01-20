@@ -206,7 +206,6 @@
                                     }
                                     else
                                     {
-                                        //unmonitoredEvent.IdAsExpandedNodeId = new ExpandedNodeId(expandedNodeId.Identifier, (ushort)namespaceIndex, expandedNodeId.NamespaceUri, 0);
                                         unmonitoredEvent.IdAsExpandedNodeId = expandedNodeId;
                                     }
                                 }
@@ -303,7 +302,6 @@
                                         FilterOperand[] filterOperands = new FilterOperand[1];
                                         TypeInfo typeInfo = new TypeInfo(BuiltInType.NodeId, ValueRanks.Scalar);
                                         filterOperands[0] = whereClauseElement.Operands[0].GetOperand(typeInfo);
-                                        //filterOperands[0] = whereClauseElement.Operands[0].GetOperand(DataTypeIds.NodeId);
                                         eventFilter.WhereClause.Push(contentFilterElement.FilterOperator, filterOperands);
                                         break;
                                     case FilterOperator.Equals:
@@ -321,8 +319,6 @@
                                     case FilterOperator.Cast:
                                     case FilterOperator.BitwiseAnd:
                                     case FilterOperator.BitwiseOr:
-                                    //case FilterOperator.InView:
-                                    //case FilterOperator.OfType:
                                     case FilterOperator.RelatedTo:
                                     default:
                                         Logger.Error($"The operator '{contentFilterElement.FilterOperator.ToString()}' is not supported.");

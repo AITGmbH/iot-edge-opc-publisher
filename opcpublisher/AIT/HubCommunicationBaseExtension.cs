@@ -93,20 +93,20 @@ namespace OpcPublisher
 
             // unpublish all removed events
             // update means we unpublish and publish again
-            var eventsToRemove = publishEventsMethodData.OpcEvents.Where(n =>
+            var eventsToRemoveOrUpdate = publishEventsMethodData.OpcEvents.Where(n =>
                 n.OpcPublisherPublishState == OpcPublisherPublishState.Remove || n.OpcPublisherPublishState == OpcPublisherPublishState.Update);
-            if (statusCode == HttpStatusCode.OK && eventsToRemove.Any())
+            if (statusCode == HttpStatusCode.OK && eventsToRemoveOrUpdate.Any())
             {
                 var unpublishStatusResponse = new List<string>();
-                (statusCode, statusMessage, unpublishStatusResponse) = await UnpublishEventsAsync(endpointId, eventsToRemove).ConfigureAwait(false);
+                (statusCode, statusMessage, unpublishStatusResponse) = await UnpublishEventsAsync(endpointId, eventsToRemoveOrUpdate).ConfigureAwait(false);
                 statusResponse.AddRange(unpublishStatusResponse);
             }
 
             // process all nodes
-            var eventsToAdd = publishEventsMethodData.OpcEvents.Where(n =>
+            var eventsToAddOrUpdate = publishEventsMethodData.OpcEvents.Where(n =>
                 n.OpcPublisherPublishState == OpcPublisherPublishState.Add || n.OpcPublisherPublishState == OpcPublisherPublishState.Update);
 
-            if (statusCode == HttpStatusCode.OK && eventsToAdd.Any())
+            if (statusCode == HttpStatusCode.OK && eventsToAddOrUpdate.Any())
             {
                 // find/create a session to the endpoint URL and start monitoring the node.
                 try
@@ -177,7 +177,7 @@ namespace OpcPublisher
                             }
                         }
 
-                        foreach (var eventNode in eventsToAdd)
+                        foreach (var eventNode in eventsToAddOrUpdate)
                         {
                             NodeId nodeId = null;
                             ExpandedNodeId expandedNodeId = null;
