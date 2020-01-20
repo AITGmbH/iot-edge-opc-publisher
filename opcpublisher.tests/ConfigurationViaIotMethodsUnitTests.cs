@@ -167,10 +167,7 @@ namespace OpcPublisher
                 Assert.True(_configurationFileEntries[0].OpcEvents.Count == 2);
                 Assert.True(_configurationFileEntries[0].OpcEvents[0].SelectClauses.Count == 4);
                 Assert.True(_configurationFileEntries[0].OpcEvents[0].WhereClause.Count == 1);
-                Assert.True(_configurationFileEntries[0].OpcEvents[0].SelectClauses[0].IotCentralEventPublishMode == IotCentralEventPublishMode.Property);
-                Assert.True(_configurationFileEntries[0].OpcEvents[0].SelectClauses[1].IotCentralEventPublishMode == IotCentralEventPublishMode.Default);
-                Assert.True(_configurationFileEntries[0].OpcEvents[0].SelectClauses[2].IotCentralEventPublishMode == IotCentralEventPublishMode.Default);
-                Assert.True(_configurationFileEntries[0].OpcEvents[0].SelectClauses[3].IotCentralEventPublishMode == IotCentralEventPublishMode.Default);
+                Assert.True(_configurationFileEntries[0].OpcEvents[0].IotCentralEventPublishMode == IotCentralEventPublishMode.Property);
             }
             finally
             {
@@ -291,10 +288,7 @@ namespace OpcPublisher
                 Assert.True(configuredEventNodesOnEndpoint.EventNodes.Count == 1);
                 Assert.True(configuredEventNodesOnEndpoint.EventNodes[0].SelectClauses.Count == 4);
                 Assert.True(configuredEventNodesOnEndpoint.EventNodes[0].WhereClause.Count == 1);
-                Assert.True(configuredEventNodesOnEndpoint.EventNodes[0].SelectClauses[0].IotCentralEventPublishMode == IotCentralEventPublishMode.Property);
-                Assert.True(configuredEventNodesOnEndpoint.EventNodes[0].SelectClauses[1].IotCentralEventPublishMode == IotCentralEventPublishMode.Default);
-                Assert.True(configuredEventNodesOnEndpoint.EventNodes[0].SelectClauses[2].IotCentralEventPublishMode == IotCentralEventPublishMode.Default);
-                Assert.True(configuredEventNodesOnEndpoint.EventNodes[0].SelectClauses[3].IotCentralEventPublishMode == IotCentralEventPublishMode.Default);
+                Assert.True(configuredEventNodesOnEndpoint.EventNodes[0].IotCentralEventPublishMode == IotCentralEventPublishMode.Property);
             }
             finally
             {

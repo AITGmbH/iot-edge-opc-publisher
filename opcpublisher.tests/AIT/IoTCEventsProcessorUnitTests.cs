@@ -42,7 +42,7 @@ namespace OpcPublisher.Tests.AIT
                 {
                     EventMessageData = new EventMessageData
                     {
-                        DisplayName = "Test"
+                        Key = "Test"
                     }
                 };
                 eventProcessor.EnqueueEvent(message);
@@ -99,7 +99,7 @@ namespace OpcPublisher.Tests.AIT
                 {
                     EventMessageData = new EventMessageData
                     {
-                        DisplayName = "Test"
+                        Key = "Test"
                     }
                 };
                 int messageLength = 33;
@@ -145,7 +145,7 @@ namespace OpcPublisher.Tests.AIT
                 {
                     EventMessageData = new EventMessageData
                     {
-                        DisplayName = "Test"
+                        Key = "Test"
                     }
                 };
 

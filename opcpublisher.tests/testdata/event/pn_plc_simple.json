@@ -28,33 +28,35 @@
       {
         "EndpointId": "eeea7191-bb7c-49e8-8362-29236a4f8468",
         "EndpointName": "Simple Server 1",
-        "Id": "i=2253",
-        "DisplayName": "SimpleEventServerEvents",
+        "Id": "{00000000-0000-0000-0000-000000000000}",
+        "EventNotifierId": "i=2253",
+        "Key": "SimpleEventServerEvents",
+        "IotCentralEventPublishMode": "Property",
         "SelectClauses": [
           {
             "TypeId": "i=2041",
-            "IotCentralEventPublishMode": "Property",
+            "Key": "i=2041",
             "BrowsePaths": [
               "EventId"
             ]
           },
           {
             "TypeId": "i=2041",
-            "IotCentralEventPublishMode": "Default",
+            "Key": "i=2041",
             "BrowsePaths": [
               "Message"
             ]
           },
           {
             "TypeId": "nsu=http://opcfoundation.org/Quickstarts/SimpleEvents;i=235",
-            "IotCentralEventPublishMode": "Default",
+            "Key": "i=2041",
             "BrowsePaths": [
               "/2:CycleId"
             ]
           },
           {
             "TypeId": "nsu=http://opcfoundation.org/Quickstarts/SimpleEvents;i=235",
-            "IotCentralEventPublishMode": "Default",
+            "Key": "i=2041",
             "BrowsePaths": [
               "/2:CurrentStep"
             ]

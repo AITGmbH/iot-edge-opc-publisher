@@ -9,36 +9,39 @@
     {
       "EndpointId": "eeea7191-bb7c-49e8-8362-29236a4f8468",
       "EndpointName": "Simple Server 1",
-      "EndpointUrl": "opc.tcp://127.0.0.1:62563/Quickstarts/SimpleEventsServer",
-      "Id": "i=2253",
-      "DisplayName": "Server",
+      "EndpointUrl": "opc.tcp://127.0.0.1:62563/Quickstarts/SimpleEventsServer",      
+      "Id": "{00000000-0000-0000-0000-000000000000}",
+      "EventNotifierId": "i=2253",
+      "EndpointId": "eeea7191-bb7c-49e8-8362-29236a4f8468",
+      "Key": "SimpleEventServerEvents",
+      "IotCentralEventPublishMode": "Default",
       "SelectClauses": [
         {
-          "TypeId": "i=2253",
-          "IotCentralEventPublishMode": "Default",
+          "TypeId": "i=2041",
+          "Key": "i=2041",
           "BrowsePaths": [
             "EventId"
           ]
         },
         {
-          "TypeId": "i=2253",
-          "IotCentralEventPublishMode": "Default",
+          "TypeId": "i=2041",
+          "Key": "i=2041",
           "BrowsePaths": [
             "Message"
           ]
         },
         {
-          "TypeId": "i=2253",
-          "IotCentralEventPublishMode": "Default",
+          "TypeId": "nsu=http://opcfoundation.org/Quickstarts/SimpleEvents;i=235",
+          "Key": "i=2041",
           "BrowsePaths": [
-            "2:CurrentStep"
+            "/2:CycleId"
           ]
         },
         {
-          "TypeId": "i=2253",
-          "IotCentralEventPublishMode": "Default",
+          "TypeId": "nsu=http://opcfoundation.org/Quickstarts/SimpleEvents;i=235",
+          "Key": "i=2041",
           "BrowsePaths": [
-            "2:CycleId"
+            "/2:CurrentStep"
           ]
         }
       ],
@@ -47,7 +50,7 @@
           "Operator": "OfType",
           "Operands": [
             {
-              "Literal": "i=2041"
+              "Literal": "ns=2;i=235"
             }
           ]
         }
