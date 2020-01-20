@@ -151,6 +151,7 @@
             IotHubDirectMethods.Add("PublishNodes", HandlePublishNodesMethodAsync);
             IotHubDirectMethods.Add("PublishEvents", HandlePublishEventsMethodAsync);
             IotHubDirectMethods.Add("UnpublishNodes", HandleUnpublishNodesMethodAsync);
+            IotHubDirectMethods.Add("UnublishEvents", HandleUnpublishEventsMethodAsync);
             IotHubDirectMethods.Add("UnpublishAllNodes", HandleUnpublishAllNodesMethodAsync);
             IotHubDirectMethods.Add("GetConfiguredEndpoints", HandleGetConfiguredEndpointsMethodAsync);
             IotHubDirectMethods.Add("DeleteConfiguredEndpoint", HandleDeleteConfiguredEndpointMethodAsync);
@@ -336,13 +337,21 @@
 
             // unpublish all removed nodes
             // update means we unpublish and publish again
-            var nodesToRemove = publishNodesMethodData.OpcNodes.Where(n =>
+            var nodesToRemoveOrUpdate = publishNodesMethodData.OpcNodes.Where(n =>
                 n.OpcPublisherPublishState == OpcPublisherPublishState.Remove || n.OpcPublisherPublishState == OpcPublisherPublishState.Update);
-            var unpublishStatusResponse = new List<string>();
-            (statusCode, statusMessage, unpublishStatusResponse) = await UnpublishNodesAsync(endpointId, nodesToRemove).ConfigureAwait(false);
-            statusResponse.AddRange(unpublishStatusResponse);
+                
+            if (statusCode == HttpStatusCode.OK && nodesToRemoveOrUpdate.Any())
+            {
+                var unpublishStatusResponse = new List<string>();
+                (statusCode, statusMessage, unpublishStatusResponse) = await UnpublishNodesAsync(endpointId, nodesToRemoveOrUpdate).ConfigureAwait(false);
+                statusResponse.AddRange(unpublishStatusResponse);
+            }
 
-            if (statusCode == HttpStatusCode.OK)
+            // process all nodes                        
+            var nodesToAddOrUpdate = publishNodesMethodData.OpcNodes.Where(n =>
+                n.OpcPublisherPublishState == OpcPublisherPublishState.Add || n.OpcPublisherPublishState == OpcPublisherPublishState.Update);
+
+            if (statusCode == HttpStatusCode.OK && nodesToAddOrUpdate.Any())
             {
                 // find/create a session to the endpoint URL and start monitoring the node.
                 try
@@ -413,10 +422,7 @@
 
                         if (statusCode != HttpStatusCode.InternalServerError)
                         {
-                            // process all nodes                        
-                            var nodesToAdd = publishNodesMethodData.OpcNodes.Where(n =>
-                                n.OpcPublisherPublishState == OpcPublisherPublishState.Add || n.OpcPublisherPublishState == OpcPublisherPublishState.Update);
-                            foreach (var node in nodesToAdd)
+                            foreach (var node in nodesToAddOrUpdate)
                             {
                                 // support legacy format
                                 if (string.IsNullOrEmpty(node.Id) && !string.IsNullOrEmpty(node.ExpandedNodeId))
@@ -424,7 +430,7 @@
                                     node.Id = node.ExpandedNodeId;
                                 }
 
-                                if (HasDuplicateKey(node.Key))
+                                if (HasDuplicateKey(endpointId, node.Key))
                                 {
                                     statusMessage = $"'{node.Id}' has duplicate key '{node.Key}'!";
                                     Logger.Error($"{logPrefix} {statusMessage}");
@@ -553,12 +559,12 @@
                 {
                     NodeConfiguration.OpcSessionsListSemaphore.Release();
                 }
-            }
-
-            // wait until the session is saved
-            if (opcSession != null)
-            {
-                await opcSession.ConnectAndMonitorAsync().ConfigureAwait(false);
+                
+                // wait until the session is saved
+                if (opcSession != null)
+                {
+                    await opcSession.ConnectAndMonitorAsync().ConfigureAwait(false);
+                }
             }
 
             // build response
@@ -578,8 +584,9 @@
             return methodResponse;
         }
 
-        private bool HasDuplicateKey(string key) => NodeConfiguration.OpcSessions.Any(
-                session => session.OpcSubscriptions.Any(subscription => subscription.OpcMonitoredItems.Any(
+        private bool HasDuplicateKey(Guid endpointId, string key) => NodeConfiguration.OpcSessions
+            .Where(session => session.EndpointId.Equals(endpointId))
+            .Any(session => session.OpcSubscriptions.Concat(session.OpcEventSubscriptions).Any(subscription => subscription.OpcMonitoredItems.Any(
                     item => string.Compare(item.Key, key, CultureInfo.InvariantCulture, CompareOptions.OrdinalIgnoreCase) == 0)));
 
         /// <summary>

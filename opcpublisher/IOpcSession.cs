@@ -206,7 +206,10 @@ namespace OpcPublisher
             int? opcPublishingInterval, int? opcSamplingInterval, string displayName,
             int? heartbeatInterval, bool? skipFirst, CancellationToken ct,
             IotCentralItemPublishMode? iotCentralItemPublishMode,
-            PublishNodesMethodRequestModel publishEventsMethodData);
+            PublishNodesMethodRequestModel publishEventsMethodData,
+            OpcEventOnEndpointModel model);
+            
+        Task<HttpStatusCode> RequestEventNodeRemovalAsync(Guid id, CancellationToken ct, bool takeLock = true);
 
         Task Reconnect();
         Task ConnectAndMonitorAsync();

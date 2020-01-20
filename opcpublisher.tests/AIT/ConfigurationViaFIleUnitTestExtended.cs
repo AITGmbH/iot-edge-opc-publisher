@@ -66,8 +66,8 @@ namespace OpcPublisher.Tests.AIT
                 _configurationFileEntries = new List<PublisherConfigurationFileEntryLegacyModel>();
                 _configurationFileEntries = JsonConvert.DeserializeObject<List<PublisherConfigurationFileEntryLegacyModel>>(File.ReadAllText(PublisherNodeConfiguration.PublisherNodeConfigurationFilename));
                 Assert.True(_configurationFileEntries[0].OpcNodes[0].IotCentralItemPublishMode == IotCentralItemPublishMode.Setting);
-                Assert.True(_configurationFileEntries[0].OpcEvents[0].Id != null);
-                Assert.True(_configurationFileEntries[0].OpcEvents[0].DisplayName != null);
+                Assert.True(_configurationFileEntries[0].OpcEvents[0].EventNotifierId != null);
+                Assert.True(_configurationFileEntries[0].OpcEvents[0].Key != null);
 
                 Assert.True(_configurationFileEntries[0].OpcEvents[0].SelectClauses[0].BrowsePaths[0] == "EventId");
                 Assert.True(_configurationFileEntries[0].OpcEvents[0].SelectClauses[1].BrowsePaths[0] == "Message");
@@ -124,8 +124,8 @@ namespace OpcPublisher.Tests.AIT
                 _configurationFileEntries = new List<PublisherConfigurationFileEntryLegacyModel>();
                 _configurationFileEntries = JsonConvert.DeserializeObject<List<PublisherConfigurationFileEntryLegacyModel>>(File.ReadAllText(PublisherNodeConfiguration.PublisherNodeConfigurationFilename));
                 Assert.True(_configurationFileEntries[0].OpcNodes[0].IotCentralItemPublishMode == IotCentralItemPublishMode.Setting);
-                Assert.True(_configurationFileEntries[0].OpcEvents[0].Id != null);
-                Assert.True(_configurationFileEntries[0].OpcEvents[0].DisplayName != null);
+                Assert.True(_configurationFileEntries[0].OpcEvents[0].EventNotifierId != null);
+                Assert.True(_configurationFileEntries[0].OpcEvents[0].Key != null);
                 Assert.True(_configurationFileEntries[0].OpcEvents[0].IotCentralEventPublishMode == IotCentralEventPublishMode.Event);
 
                 Assert.True(_configurationFileEntries[0].OpcEvents[0].SelectClauses[0].BrowsePaths[0] == "EventId");

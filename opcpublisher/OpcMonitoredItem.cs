@@ -391,6 +391,11 @@ namespace OpcPublisher
         /// </summary>
         public string Id { get; set; }
 
+        /// <summary>
+        /// The unique id of the event if this monitored node is an event.
+        /// </summary>
+        public Guid EventId { get; set; }
+
         // todo use the same model for nodes as we use now for events to store the original setting
         /// <summary>
         /// The OPC UA identifier of the node as ExpandedNodeId ("nsu=").
@@ -485,7 +490,9 @@ namespace OpcPublisher
         /// </summary>
         public OpcMonitoredItem(EventConfigurationModel opcEvent, Guid sessionEndpointId, string sessionEndpointUrl)
         {
-            Id = opcEvent.Id;
+            Id = opcEvent.EventNotifierId;
+            Key = opcEvent.Key;
+            EventId = opcEvent.Id;
             if (Id.StartsWith("nsu=", StringComparison.InvariantCulture))
             {
                 ConfigType = OpcMonitoredItemConfigurationType.ExpandedNodeId;
@@ -494,8 +501,8 @@ namespace OpcPublisher
             {
                 ConfigType = OpcMonitoredItemConfigurationType.NodeId;
             }
-            DisplayName = opcEvent.DisplayName;
-            DisplayNameFromConfiguration = string.IsNullOrEmpty(opcEvent.DisplayName) ? false : true;
+            DisplayName = opcEvent.Key;
+            DisplayNameFromConfiguration = string.IsNullOrEmpty(opcEvent.Key) ? false : true;
             EventConfiguration = opcEvent;
             State = OpcMonitoredItemState.Unmonitored;
             AttributeId = Attributes.EventNotifier;
@@ -512,7 +519,7 @@ namespace OpcPublisher
             HeartbeatInterval = 0;
             HeartbeatIntervalFromConfiguration = false;
             SkipFirst = false;
-            SkipFirstFromConfiguration = false;
+            SkipFirstFromConfiguration = false;            
         }
 
         /// <summary>
@@ -678,7 +685,7 @@ namespace OpcPublisher
                 }
                 else
                 {
-                    Logger.Debug($"EnqueueProperty a new message from subscription {(monitoredItem.Subscription == null ? "removed" : monitoredItem.Subscription.Id.ToString(CultureInfo.InvariantCulture))}");
+                    Logger.Debug($"Handling a new message from subscription {(monitoredItem.Subscription == null ? "removed" : monitoredItem.Subscription.Id.ToString(CultureInfo.InvariantCulture))}");
                     Logger.Debug($" with publishing interval: {monitoredItem?.Subscription?.PublishingInterval} and sampling interval: {monitoredItem?.SamplingInterval}):");
                 }
 
@@ -774,11 +781,6 @@ namespace OpcPublisher
                     return;
                 }
 
-                if (!(message.NotificationData is ExtensionObjectCollection notificationData) || notificationData.Count == 0)
-                {
-                    return;
-                }
-
                 EventMessageData eventMessageData = new EventMessageData();
                 eventMessageData.EndpointId = EndpointId.ToString();
                 eventMessageData.EndpointUrl = EndpointUrl;
@@ -787,31 +789,34 @@ namespace OpcPublisher
                 eventMessageData.DisplayName = monitoredItem.DisplayName;
                 eventMessageData.NodeId = monitoredItem.StartNodeId.ToString();
                 eventMessageData.IotCentralEventPublishMode = EventConfiguration.IotCentralEventPublishMode;
-                foreach (var eventList in notificationData)
-                {
-                    EventNotificationList eventNotificationList = eventList.Body as EventNotificationList;
-                    foreach (var eventFieldList in eventNotificationList.Events)
-                    {
-                        int i = 0;
-                        foreach (var eventField in eventFieldList.EventFields)
-                        {
-                            // prepare event field values
-                            EventValue eventValue = new EventValue();
-                            eventValue.Name = monitoredItem.GetFieldName(i++);
 
-                            // use the Value as reported in the notification event argument encoded with the OPC UA JSON endcoder
-                            DataValue value = new DataValue(eventField);
-                            string encodedValue = string.Empty;
-                            EncodeValue(value, monitoredItem.Subscription.Session.MessageContext, out encodedValue, out bool preserveValueQuotes);
-                            eventValue.Value = encodedValue;
-                            eventValue.PreserveValueQuotes = preserveValueQuotes;
-                            var selectClause = EventConfiguration.SelectClauses.SingleOrDefault(w => w.BrowsePaths.Any(x => eventValue.Name.Contains(x)));
-                            if(selectClause != null)
-                                eventValue.IotCentralEventPublishMode = selectClause.IotCentralEventPublishMode;
-                            eventMessageData.EventValues.Add(eventValue);
-                            Logger.Debug($"Event notification field name: '{eventValue.Name}', value: '{eventValue.Value}'");
-                        }
+                int i = 0;
+                foreach (var eventField in notificationValue.EventFields)
+                {
+                    // prepare event field values
+                    EventValue eventValue = new EventValue();
+                    eventValue.Name = monitoredItem.GetFieldName(i++);
+                    if (string.IsNullOrEmpty(eventValue.Name))
+                    {
+                        // ignore event field
+                        continue;
                     }
+
+                    // use the Value as reported in the notification event argument encoded with the OPC UA JSON endcoder
+                    DataValue value = new DataValue(eventField);
+                    string encodedValue = string.Empty;
+                    EncodeValue(value, monitoredItem.Subscription.Session.MessageContext, out encodedValue, out bool preserveValueQuotes);
+                    eventValue.Value = encodedValue;
+                    eventValue.PreserveValueQuotes = preserveValueQuotes;
+                    
+                    var selectClause = EventConfiguration.SelectClauses.SingleOrDefault(w => w.BrowsePaths.Any(x => eventValue.Name.Contains(x)));
+                    if (selectClause != null)
+                    {
+                        eventValue.Name = selectClause.Key;
+                    }
+
+                    eventMessageData.EventValues.Add(eventValue);
+                    Logger.Debug($"Event notification field name: '{eventValue.Name}', value: '{eventValue.Value}'");
                 }
 
                 // add message to fifo send queue
@@ -821,7 +826,7 @@ namespace OpcPublisher
                 }
                 else
                 {
-                    Logger.Debug($"EnqueueProperty a new message from subscription {(monitoredItem.Subscription == null ? "removed" : monitoredItem.Subscription.Id.ToString(CultureInfo.InvariantCulture))}");
+                    Logger.Debug($"Handling a new message from subscription {(monitoredItem.Subscription == null ? "removed" : monitoredItem.Subscription.Id.ToString(CultureInfo.InvariantCulture))}");
                     Logger.Debug($" with publishing interval: {monitoredItem?.Subscription?.PublishingInterval} and sampling interval: {monitoredItem?.SamplingInterval}):");
                 }
 
@@ -831,7 +836,7 @@ namespace OpcPublisher
                 if (SendHub != null)
                 {
                     Logger.Debug("SendHub is used for Telemetry sending");
-                    if (messageData.EventMessageData.EventValues.Any(a => a.IotCentralEventPublishMode == IotCentralEventPublishMode.Property))
+                    if (messageData.EventMessageData.IotCentralEventPublishMode == IotCentralEventPublishMode.Property)
                         SendHub.EnqueueProperty(messageData);
                     else if(messageData.EventMessageData.IotCentralEventPublishMode == IotCentralEventPublishMode.Event)
                         SendHub.EnqueueEvent(messageData);
@@ -840,7 +845,7 @@ namespace OpcPublisher
                 }
                 else
                 {
-                    if (messageData.EventMessageData.EventValues.Any(a => a.IotCentralEventPublishMode == IotCentralEventPublishMode.Property))
+                    if (messageData.EventMessageData.IotCentralEventPublishMode == IotCentralEventPublishMode.Property)
                         Hub.EnqueueProperty(messageData);
                     else if (messageData.EventMessageData.IotCentralEventPublishMode == IotCentralEventPublishMode.Event)
                         Hub.EnqueueEvent(messageData);
