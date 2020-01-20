@@ -422,6 +422,12 @@
 
                         if (statusCode != HttpStatusCode.InternalServerError)
                         {
+<<<<<<< HEAD
+=======
+                            // process all nodes                        
+                            var nodesToAdd = publishNodesMethodData.OpcNodes.Where(n =>
+                                n.OpcPublisherPublishState == OpcPublisherPublishState.Add || n.OpcPublisherPublishState == OpcPublisherPublishState.Update);
+>>>>>>> master
                             foreach (var node in nodesToAdd)
                             {
                                 // support legacy format
@@ -430,7 +436,11 @@
                                     node.Id = node.ExpandedNodeId;
                                 }
 
+<<<<<<< HEAD
                                 if (HasDuplicateKey(endpointId, node.Key))
+=======
+                                if (HasDuplicateKey(node.Key))
+>>>>>>> master
                                 {
                                     statusMessage = $"'{node.Id}' has duplicate key '{node.Key}'!";
                                     Logger.Error($"{logPrefix} {statusMessage}");
@@ -584,9 +594,14 @@
             return methodResponse;
         }
 
+<<<<<<< HEAD
         private bool HasDuplicateKey(Guid endpointId, string key) => NodeConfiguration.OpcSessions
             .Where(session => session.EndpointId.Equals(endpointId))
             .Any(session => session.OpcSubscriptions.Concat(session.OpcEventSubscriptions).Any(subscription => subscription.OpcMonitoredItems.Any(
+=======
+        private bool HasDuplicateKey(string key) => NodeConfiguration.OpcSessions.Any(
+                session => session.OpcSubscriptions.Any(subscription => subscription.OpcMonitoredItems.Any(
+>>>>>>> master
                     item => string.Compare(item.Key, key, CultureInfo.InvariantCulture, CompareOptions.OrdinalIgnoreCase) == 0)));
 
         /// <summary>
