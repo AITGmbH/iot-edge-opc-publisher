@@ -89,8 +89,8 @@ namespace OpcPublisher.Tests.AIT
 
             //2 messages are sent
             //for every message, except the last one, there is one "," added
-            //and the received messages begins with '[' and ends with ']'W
-            streamLength.Should().Be((messageLength + 1) * 2 + 1);
+            //and the received messages begins with '[' and ends with ']'
+            streamLength.Should().Be(messageLength * 2 + 2 + 1);
         }
 
         [Fact]

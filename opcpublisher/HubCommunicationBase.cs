@@ -1614,7 +1614,7 @@
                     }
 
                     // process MonitoredItem object properties
-                    if (!string.IsNullOrEmpty(messageData.ApplicationUri) || !string.IsNullOrEmpty(messageData.DisplayName))
+                    if (!string.IsNullOrEmpty(messageData.ApplicationUri) || !string.IsNullOrEmpty(messageData.DisplayName) || !string.IsNullOrEmpty(messageData.Key))
                     {
                         if (!(bool)telemetryConfiguration.MonitoredItem.Flat)
                         {
@@ -1759,7 +1759,7 @@
                     }
 
                     // process MonitoredItem object properties
-                    if (!string.IsNullOrEmpty(eventData.ApplicationUri) || !string.IsNullOrEmpty(eventData.DisplayName))
+                    if (!string.IsNullOrEmpty(eventData.ApplicationUri) || !string.IsNullOrEmpty(eventData.DisplayName) || !string.IsNullOrEmpty(eventData.Key))
                     {
                         if (!(bool)telemetryConfiguration.MonitoredItem.Flat)
                         {
@@ -1779,6 +1779,13 @@
                         {
                             await _jsonWriter.WritePropertyNameAsync(telemetryConfiguration.MonitoredItem.DisplayName.Name).ConfigureAwait(false);
                             await _jsonWriter.WriteValueAsync(eventData.DisplayName).ConfigureAwait(false);
+                        }
+
+                        // process Key
+                        if (!string.IsNullOrEmpty(eventData.Key))
+                        {
+                            await _jsonWriter.WritePropertyNameAsync(telemetryConfiguration.MonitoredItem.Key.Name).ConfigureAwait(false);
+                            await _jsonWriter.WriteValueAsync(eventData.Key).ConfigureAwait(false);
                         }
 
                         if (!(bool)telemetryConfiguration.MonitoredItem.Flat)

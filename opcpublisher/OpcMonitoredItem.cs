@@ -786,6 +786,7 @@ namespace OpcPublisher
                 eventMessageData.EndpointUrl = EndpointUrl;
                 eventMessageData.PublishTime = message.PublishTime.ToString("o", CultureInfo.InvariantCulture);
                 eventMessageData.ApplicationUri = monitoredItem.Subscription.Session.Endpoint.Server.ApplicationUri + (string.IsNullOrEmpty(OpcSession.PublisherSite) ? "" : $":{OpcSession.PublisherSite}");
+                eventMessageData.Key = Key;
                 eventMessageData.DisplayName = monitoredItem.DisplayName;
                 eventMessageData.NodeId = monitoredItem.StartNodeId.ToString();
                 eventMessageData.IotCentralEventPublishMode = EventConfiguration.IotCentralEventPublishMode;

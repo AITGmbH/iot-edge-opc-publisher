@@ -11,31 +11,36 @@
       }
     ],
     "OpcEvents": [
-      {
-        "Id": "i=2253",
-        "DisplayName": "SimpleEventServerEvents",
+      {        
+        "Id": "{00000000-0000-0000-0000-000000000000}",
+        "EventNotifierId": "i=2253",
+        "Key": "SimpleEventServerEvents",
         "IotCentralEventPublishMode": "Event",
         "SelectClauses": [
           {
             "TypeId": "i=2041",
+            "Key": "i=2041",
             "BrowsePaths": [
               "EventId"
             ]
           },
           {
             "TypeId": "i=2041",
+            "Key": "i=2041",
             "BrowsePaths": [
               "Message"
             ]
           },
           {
             "TypeId": "nsu=http://opcfoundation.org/Quickstarts/SimpleEvents;i=235",
+            "Key": "i=2041",
             "BrowsePaths": [
               "/2:CycleId"
             ]
           },
           {
             "TypeId": "nsu=http://opcfoundation.org/Quickstarts/SimpleEvents;i=235",
+            "Key": "i=2041",
             "BrowsePaths": [
               "/2:CurrentStep"
             ]

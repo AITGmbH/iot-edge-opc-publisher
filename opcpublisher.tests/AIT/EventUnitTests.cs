@@ -93,23 +93,16 @@ namespace OpcPublisher.Tests.AIT
                 Assert.True(_configurationFileEntries[0].OpcEvents[0].Key == "SimpleEventServerEvents");
                 Assert.True(_configurationFileEntries[0].OpcEvents[0].SelectClauses.Count == 4);
                 Assert.True(_configurationFileEntries[0].OpcEvents[0].SelectClauses[0].TypeId == "i=2041");
-                Assert.True(_configurationFileEntries[0].OpcEvents[0].SelectClauses[0].IotCentralEventPublishMode ==
-                            IotCentralEventPublishMode.Property);
+                Assert.True(_configurationFileEntries[0].OpcEvents[0].IotCentralEventPublishMode == IotCentralEventPublishMode.Property);
                 Assert.True(_configurationFileEntries[0].OpcEvents[0].SelectClauses[0].BrowsePaths[0] == "EventId");
 
                 Assert.True(_configurationFileEntries[0].OpcEvents[0].SelectClauses[1].TypeId == "i=2041");
-                Assert.True(_configurationFileEntries[0].OpcEvents[0].SelectClauses[1].IotCentralEventPublishMode ==
-                            IotCentralEventPublishMode.Default);
                 Assert.True(_configurationFileEntries[0].OpcEvents[0].SelectClauses[1].BrowsePaths[0] == "Message");
 
                 Assert.True(_configurationFileEntries[0].OpcEvents[0].SelectClauses[2].TypeId == "nsu=http://opcfoundation.org/Quickstarts/SimpleEvents;i=235");
-                Assert.True(_configurationFileEntries[0].OpcEvents[0].SelectClauses[2].IotCentralEventPublishMode ==
-                            IotCentralEventPublishMode.Default);
                 Assert.True(_configurationFileEntries[0].OpcEvents[0].SelectClauses[2].BrowsePaths[0] == "/2:CycleId");
 
                 Assert.True(_configurationFileEntries[0].OpcEvents[0].SelectClauses[3].TypeId == "nsu=http://opcfoundation.org/Quickstarts/SimpleEvents;i=235");
-                Assert.True(_configurationFileEntries[0].OpcEvents[0].SelectClauses[3].IotCentralEventPublishMode ==
-                            IotCentralEventPublishMode.Default);
                 Assert.True(_configurationFileEntries[0].OpcEvents[0].SelectClauses[3].BrowsePaths[0] == "/2:CurrentStep");
 
                 Assert.True(_configurationFileEntries[0].OpcEvents[0].WhereClause.Count == 1);
@@ -182,23 +175,15 @@ namespace OpcPublisher.Tests.AIT
 
                 Assert.True(_configurationFileEntries[0].OpcEvents[0].SelectClauses.Count == 4);
                 Assert.True(_configurationFileEntries[0].OpcEvents[0].SelectClauses[0].TypeId == "i=2041");
-                Assert.True(_configurationFileEntries[0].OpcEvents[0].SelectClauses[0].IotCentralEventPublishMode ==
-                            IotCentralEventPublishMode.Default);
                 Assert.True(_configurationFileEntries[0].OpcEvents[0].SelectClauses[0].BrowsePaths[0] == "EventId");
 
                 Assert.True(_configurationFileEntries[0].OpcEvents[0].SelectClauses[1].TypeId == "i=2041");
-                Assert.True(_configurationFileEntries[0].OpcEvents[0].SelectClauses[1].IotCentralEventPublishMode ==
-                            IotCentralEventPublishMode.Default);
                 Assert.True(_configurationFileEntries[0].OpcEvents[0].SelectClauses[1].BrowsePaths[0] == "Message");
 
                 Assert.True(_configurationFileEntries[0].OpcEvents[0].SelectClauses[2].TypeId == "nsu=http://opcfoundation.org/Quickstarts/SimpleEvents;i=235");
-                Assert.True(_configurationFileEntries[0].OpcEvents[0].SelectClauses[2].IotCentralEventPublishMode ==
-                            IotCentralEventPublishMode.Default);
                 Assert.True(_configurationFileEntries[0].OpcEvents[0].SelectClauses[2].BrowsePaths[0] == "/2:CycleId");
 
                 Assert.True(_configurationFileEntries[0].OpcEvents[0].SelectClauses[3].TypeId == "nsu=http://opcfoundation.org/Quickstarts/SimpleEvents;i=235");
-                Assert.True(_configurationFileEntries[0].OpcEvents[0].SelectClauses[3].IotCentralEventPublishMode ==
-                            IotCentralEventPublishMode.Default);
                 Assert.True(_configurationFileEntries[0].OpcEvents[0].SelectClauses[3].BrowsePaths[0] == "/2:CurrentStep");
 
                 Assert.True(_configurationFileEntries[0].OpcEvents[0].WhereClause.Count == 1);
@@ -208,7 +193,7 @@ namespace OpcPublisher.Tests.AIT
             }
             finally
             {
-                NodeConfiguration.Dispose();
+                NodeConfiguration?.Dispose();
                 NodeConfiguration = null;
             }
         }
@@ -271,23 +256,15 @@ namespace OpcPublisher.Tests.AIT
 
                 Assert.True(_configurationFileEntries[0].OpcEvents[0].SelectClauses.Count == 4);
                 Assert.True(_configurationFileEntries[0].OpcEvents[0].SelectClauses[0].TypeId == "i=2041");
-                Assert.False(_configurationFileEntries[0].OpcEvents[0].SelectClauses[0].IotCentralEventPublishMode ==
-                            IotCentralEventPublishMode.Default);
                 Assert.True(_configurationFileEntries[0].OpcEvents[0].SelectClauses[0].BrowsePaths[0] == "EventId");
 
                 Assert.True(_configurationFileEntries[0].OpcEvents[0].SelectClauses[1].TypeId == "i=2041");
-                Assert.True(_configurationFileEntries[0].OpcEvents[0].SelectClauses[1].IotCentralEventPublishMode ==
-                            IotCentralEventPublishMode.Default);
                 Assert.True(_configurationFileEntries[0].OpcEvents[0].SelectClauses[1].BrowsePaths[0] == "Message");
 
                 Assert.True(_configurationFileEntries[0].OpcEvents[0].SelectClauses[2].TypeId == "nsu=http://opcfoundation.org/Quickstarts/SimpleEvents;i=235");
-                Assert.True(_configurationFileEntries[0].OpcEvents[0].SelectClauses[2].IotCentralEventPublishMode ==
-                            IotCentralEventPublishMode.Default);
                 Assert.True(_configurationFileEntries[0].OpcEvents[0].SelectClauses[2].BrowsePaths[0] == "/2:CycleId");
 
                 Assert.True(_configurationFileEntries[0].OpcEvents[0].SelectClauses[3].TypeId == "nsu=http://opcfoundation.org/Quickstarts/SimpleEvents;i=235");
-                Assert.True(_configurationFileEntries[0].OpcEvents[0].SelectClauses[3].IotCentralEventPublishMode ==
-                            IotCentralEventPublishMode.Default);
                 Assert.True(_configurationFileEntries[0].OpcEvents[0].SelectClauses[3].BrowsePaths[0] == "/2:CurrentStep");
 
                 Assert.True(_configurationFileEntries[0].OpcEvents[0].WhereClause.Count == 1);
