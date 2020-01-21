@@ -125,12 +125,6 @@
         public const TransportType IotEdgeHubProtocolDefault = TransportType.Amqp_Tcp_Only;
         public static TransportType HubProtocol { get; set; } = IotHubProtocolDefault;
 
-        // On top of the message type "application/json+uajson" we need to
-        // know how the data is structured to find measurement keys and values
-        public const string MessageSchemaPropertyName = "x-message-schema";
-        public const string MessageSchemaIotCentral = "opcua_iotcentral";
-        public const string MessageSchemaIotHub = "opcua_iothub";
-
         /// <summary>
         /// Dictionary of available IoTHub direct methods.
         /// </summary>
@@ -1707,9 +1701,6 @@
                         }
                     }
 
-                    await _jsonWriter.WritePropertyNameAsync("messageType").ConfigureAwait(false);
-                    await _jsonWriter.WriteValueAsync("measurement").ConfigureAwait(false);
-
                     await _jsonWriter.WriteEndObjectAsync().ConfigureAwait(false);
                     await _jsonWriter.FlushAsync().ConfigureAwait(false);
                 }
@@ -1799,18 +1790,15 @@
                     {
                         foreach (var eventValue in eventData.EventValues)
                         {
-                            //Prevent EventValues to be published as telemetry or event when it is configured as Property
-                            if (eventValue.IotCentralEventPublishMode != IotCentralEventPublishMode.Property)
+                            await _jsonWriter.WritePropertyNameAsync(eventValue.Name).ConfigureAwait(false);
+                            
+                            if (eventValue.Value is string stringValue)
                             {
-                                await _jsonWriter.WritePropertyNameAsync(eventValue.Name).ConfigureAwait(false);
-                                if (eventValue.PreserveValueQuotes)
-                                {
-                                    await _jsonWriter.WriteValueAsync(eventValue.Value.Replace(",", ".")).ConfigureAwait(false);
-                                }
-                                else
-                                {
-                                    await _jsonWriter.WriteRawValueAsync(eventValue.Value.Replace(",", ".")).ConfigureAwait(false);
-                                }
+                                await _jsonWriter.WriteRawValueAsync(stringValue?.Replace(",", ".")).ConfigureAwait(false);
+                            }
+                            else
+                            {
+                                await _jsonWriter.WriteRawValueAsync(eventValue.Value?.ToString()?.Replace(",", ".")).ConfigureAwait(false);
                             }
                         }
                     }
@@ -1821,9 +1809,6 @@
                         await _jsonWriter.WritePropertyNameAsync(telemetryConfiguration.Value.PublishTime.Name).ConfigureAwait(false);
                         await _jsonWriter.WriteValueAsync(eventData.PublishTime).ConfigureAwait(false);
                     }
-
-                    await _jsonWriter.WritePropertyNameAsync("messageType").ConfigureAwait(false);
-                    await _jsonWriter.WriteValueAsync("event").ConfigureAwait(false);
 
                     await _jsonWriter.WriteEndObjectAsync().ConfigureAwait(false);
                     await _jsonWriter.FlushAsync().ConfigureAwait(false);
@@ -1908,7 +1893,7 @@
                                 NumberOfDataChangeEvents++;
                                 jsonMessage = await CreateJsonForDataChangeAsync(dataChangeMessageData).ConfigureAwait(false);
                             }
-                            if (eventMessageData != null)
+                            else if (eventMessageData != null)
                             {
                                 NumberOfEvents++;
                                 jsonMessage = await CreateJsonForEventAsync(eventMessageData).ConfigureAwait(false);
@@ -1995,7 +1980,7 @@
                                 nextSendTime += TimeSpan.FromSeconds(SendIntervalSeconds);
                                 try
                                 {
-                                    encodedhubMessage.Properties["endpointId"] = dataChangeMessageData.EndpointId ?? eventMessageData.EndpointId;
+                                    encodedhubMessage.Properties["endpointId"] = dataChangeMessageData?.EndpointId ?? eventMessageData?.EndpointId;
                                     SentBytes += encodedhubMessage.GetBytes().Length;
                                     await _hubClient.SendEventAsync(encodedhubMessage).ConfigureAwait(false);
                                     SentMessages++;
