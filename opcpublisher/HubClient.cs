@@ -234,10 +234,7 @@ namespace OpcPublisher
             {
                 foreach (var eventValue in message.EventMessageData.EventValues)
                 {
-                    if (eventValue.IotCentralEventPublishMode == IotCentralEventPublishMode.Property)
-                    {
-                        reportedPropertiesEdge[eventValue.Name] = eventValue.Value;
-                    }
+                    reportedPropertiesEdge[eventValue.Name] = eventValue.Value;
                 }
             }
             else
@@ -267,12 +264,9 @@ namespace OpcPublisher
             {
                 foreach (var eventValue in message.EventMessageData.EventValues)
                 {
-                    if (eventValue.IotCentralEventPublishMode == IotCentralEventPublishMode.Property)
-                    {
-                        reportedPropertiesEdge[eventValue.Name] = new JObject();
-                        reportedPropertiesEdge[eventValue.Name]["value"] = eventValue.Value;
-                        reportedPropertiesEdge[eventValue.Name]["status"] = IoTCentral_ReportedPropertyStatusCompleted;
-                    }
+                    reportedPropertiesEdge[eventValue.Name] = new JObject();
+                    reportedPropertiesEdge[eventValue.Name]["value"] = eventValue.Value;
+                    reportedPropertiesEdge[eventValue.Name]["status"] = IoTCentral_ReportedPropertyStatusCompleted;
                 }
             }
             else

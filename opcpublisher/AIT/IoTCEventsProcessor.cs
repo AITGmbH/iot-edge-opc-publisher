@@ -127,7 +127,7 @@ namespace OpcPublisher
                         if (eventMessageData != null)
                         {
                             // for IoTCentral we send simple key/value pairs. key is the DisplayName, value the value.
-                            _jsonMessage = await CreateIoTCentralJsonForEventChangeAsync(eventMessageData, _shutdownToken).ConfigureAwait(false);
+                            _jsonMessage = await CreateJsonForEventChangeAsync(eventMessageData, _shutdownToken).ConfigureAwait(false);
 
                             _jsonMessageSize =
                                 Encoding.UTF8.GetByteCount(_jsonMessage.ToString(CultureInfo.InvariantCulture));
@@ -218,7 +218,6 @@ namespace OpcPublisher
                         {
                             encodedhubMessage.ContentType = CONTENT_TYPE_OPCUAJSON;
                             encodedhubMessage.ContentEncoding = CONTENT_ENCODING_UTF8;
-                            encodedhubMessage.Properties[HubCommunicationBase.MessageSchemaPropertyName] = HubCommunicationBase.MessageSchemaIotCentral;
 
                             nextSendTime += TimeSpan.FromSeconds(_timeout);
                             try
@@ -318,7 +317,7 @@ namespace OpcPublisher
         /// <summary>
         /// Creates an IoTCentral JSON message for a event change notification, based on the event configuration for the endpoint.
         /// </summary>
-        private async Task<string> CreateIoTCentralJsonForEventChangeAsync(EventMessageData messageData, CancellationToken shutdownToken)
+        private async Task<string> CreateJsonForEventChangeAsync(EventMessageData messageData, CancellationToken shutdownToken)
         {
             try
             {
@@ -328,14 +327,12 @@ namespace OpcPublisher
                 using (JsonWriter jsonWriter = new JsonTextWriter(jsonStringWriter))
                 {
                     await jsonWriter.WriteStartObjectAsync(shutdownToken).ConfigureAwait(false);
+
                     await jsonWriter.WritePropertyNameAsync(messageData.Key, shutdownToken).ConfigureAwait(false);
-                    var eventValues = string.Join(",", messageData.EventValues.Select(s => new {
-                        s.Name,
-                        s.Value
-                    }));
+                    
+                    var eventValues = string.Join(", ", messageData.EventValues.Select(s => $"{{ \"{s.Name}\" = \"{s.Value}\" }}"));
                     await jsonWriter.WriteValueAsync(eventValues, shutdownToken).ConfigureAwait(false);
-                    await jsonWriter.WritePropertyNameAsync("messageType", shutdownToken).ConfigureAwait(false);
-                    await jsonWriter.WriteValueAsync("event", shutdownToken).ConfigureAwait(false);
+                    
                     await jsonWriter.WriteEndObjectAsync(shutdownToken).ConfigureAwait(false);
                     await jsonWriter.FlushAsync(shutdownToken).ConfigureAwait(false);
                 }
