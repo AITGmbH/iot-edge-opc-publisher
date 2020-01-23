@@ -4,6 +4,7 @@ using Newtonsoft.Json.Converters;
 using System;
 using System.Collections.Generic;
 using System.ComponentModel;
+using System.Linq;
 using System.Runtime.InteropServices;
 
 namespace OpcPublisher
@@ -374,5 +375,87 @@ namespace OpcPublisher
 
         [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
         public ulong? ContinuationToken { get; set; }
+    }
+
+    /// <summary>
+    /// Model class for a get message properties response.
+    /// </summary>
+    public class GetMessagePropertiesReponseModel
+    {
+        /// <summary>
+        /// Gets or sets the message properties.
+        /// </summary>
+        public List<MessageProperty> Items { get; set; } = new List<MessageProperty>();
+
+        public GetMessagePropertiesReponseModel()
+        {            
+        }
+
+        public GetMessagePropertiesReponseModel(IEnumerable<MessageProperty> items)
+        {
+            Items = items.ToList();
+        }
+    }
+
+    /// <summary>
+    /// Model class for a message property.
+    /// </summary>
+    public class MessageProperty
+    {
+        /// <summary>
+        /// Gets or sets the name of the message property.
+        /// </summary>
+        public string Name { get; set; }
+
+        /// <summary>
+        /// Gets or sets the text that is displayed when selecting a message property.
+        /// </summary>
+        public string DisplayText { get; set; }
+
+        /// <summary>
+        /// Gets or sets the message property values.
+        /// </summary>
+        public List<MessagePropertyValue> Values { get; set; }
+
+        public MessageProperty()
+        {
+        }
+
+        public MessageProperty(string displayText, string name)
+        {
+            DisplayText = displayText;
+            Name = name;
+        }
+
+        public MessageProperty(string displayText, string name, IEnumerable<MessagePropertyValue> values) : this(displayText, name)
+        {
+            Values = values.ToList();
+        }
+    }
+
+    /// <summary>
+    /// Model class for a message property value.
+    /// </summary>
+    public class MessagePropertyValue
+    {
+        /// <summary>
+        /// Gets or sets the value of the message property.
+        /// </summary>
+        public string Value { get; set; }
+
+        /// <summary>
+        /// Gets or sets the text that is displayed when selecting a message property value.
+        /// </summary>
+        public string DisplayText { get; set; }
+
+        public MessagePropertyValue()
+        {
+        }
+
+        public MessagePropertyValue(string displayText, string value)
+        {
+            DisplayText = displayText;
+            Value = value;
+        }
     }
 }
