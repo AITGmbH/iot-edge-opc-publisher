@@ -30,6 +30,23 @@ namespace OpcPublisher
         public void EnqueueSetting(MessageData message) => _settingsProcessor.EnqueueSetting(message);
 
         /// <summary>
+        /// Handle get message properties method call.
+        /// </summary>
+        public virtual Task<MethodResponse> HandleGetMessagePropertiesMethodAsync(MethodRequest methodRequest, object userContext)
+        {
+            var response = new GetMessagePropertiesReponseModel();
+
+            var endpoints = NodeConfiguration.GetPublisherConfigurationFileEntries(Guid.Empty, false, out _)
+                .Select(e => new MessagePropertyValue(e.EndpointName, e.EndpointId.ToString()));
+            var endpointMessageProperty = new MessageProperty("OPC UA endpoint", "endpointId", endpoints);
+            response.Items.Add(endpointMessageProperty);
+            
+            string resultString = JsonConvert.SerializeObject(response);
+            byte[] result = Encoding.UTF8.GetBytes(resultString);
+            return Task.FromResult(new MethodResponse(result, (int)HttpStatusCode.OK));
+        }
+
+        /// <summary>
         /// Handle publish event node method call.
         /// </summary>
         public virtual async Task<MethodResponse> HandlePublishEventsMethodAsync(MethodRequest methodRequest, object userContext)

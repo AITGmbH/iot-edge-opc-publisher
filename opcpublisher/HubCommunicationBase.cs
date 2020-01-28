@@ -158,6 +158,7 @@
             IotHubDirectMethods.Add("GetDiagnosticStartupLog", HandleGetDiagnosticStartupLogMethodAsync);
             IotHubDirectMethods.Add("ExitApplication", HandleExitApplicationMethodAsync);
             IotHubDirectMethods.Add("GetInfo", HandleGetInfoMethodAsync);
+            IotHubDirectMethods.Add("GetMessageProperties", HandleGetMessagePropertiesMethodAsync);            
         }
 
         /// <summary>
