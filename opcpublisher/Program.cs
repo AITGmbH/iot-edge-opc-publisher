@@ -1022,7 +1022,7 @@ namespace OpcPublisher
             }
 
             // initialize publisher diagnostics
-            Diag = new PublisherDiagnostics(Hub);
+            Diag = new PublisherDiagnostics();
 
             Logger = loggerConfiguration.CreateLogger();
             Logger.Information($"Current directory is: {System.IO.Directory.GetCurrentDirectory()}");

@@ -72,7 +72,7 @@
                 }
 
                 // if it is already published, we do nothing, else we create a new monitored event item
-                if (!IsEventNodePublishedInSessionInternal(nodeIdCheck, expandedNodeIdCheck))
+                if (!IsEventNodePublishedInSessionInternal(key))
                 {
                     OpcMonitoredItem opcMonitoredItem = null;
                     EncryptedNetworkCredential encryptedCredentials = null;
@@ -102,7 +102,7 @@
                     }
                     opcEventSubscription.OpcMonitoredItems.Add(opcMonitoredItem);
                     Interlocked.Increment(ref NodeConfigVersion);
-                    Logger.Debug($"{logPrefix} Added event item with nodeId '{(expandedNodeId == null ? nodeId.ToString() : expandedNodeId.ToString())}' for monitoring.");
+                    Logger.Debug($"{logPrefix} Added event item with key '{key}' for monitoring.");
 
                     // trigger the actual OPC communication with the server to be done
                     ConnectAndMonitorSession.Set();
@@ -110,12 +110,12 @@
                 }
                 else
                 {
-                    Logger.Debug($"{logPrefix} Node with Id '{(expandedNodeId == null ? nodeId.ToString() : expandedNodeId.ToString())}' is already monitored.");
+                    Logger.Debug($"{logPrefix} Node with key '{key}' is already monitored.");
                 }
             }
             catch (Exception e)
             {
-                Logger.Error(e, $"{logPrefix} Exception while trying to add node '{(expandedNodeId == null ? nodeId.ToString() : expandedNodeId.ToString())}' for monitoring.");
+                Logger.Error(e, $"{logPrefix} Exception while trying to add node '{(expandedNodeId == null ? nodeId.ToString() : expandedNodeId.ToString())}' with key '{key}' for monitoring.");
                 return HttpStatusCode.InternalServerError;
             }
             finally
@@ -522,15 +522,15 @@
 
 
         /// <summary>
-        /// Checks if the event node specified by either the given NodeId or ExpandedNodeId on the given endpoint is published in the session. Caller to take session semaphore.
+        /// Checks if the event node specified by the given key on the given endpoint is published in the session. Caller to take session semaphore.
         /// </summary>
-        private bool IsEventNodePublishedInSessionInternal(NodeId nodeId, ExpandedNodeId expandedNodeId)
+        private bool IsEventNodePublishedInSessionInternal(string key)
         {
             try
             {
                 foreach (var opcSubscription in OpcEventSubscriptions)
                 {
-                    if (opcSubscription.OpcMonitoredItems.Any(m => { return m.IsMonitoringThisNode(nodeId, expandedNodeId, _namespaceTable); }))
+                    if (opcSubscription.OpcMonitoredItems.Any(m => { return string.Compare(key, m.Key, StringComparison.OrdinalIgnoreCase) == 0; }))
                     {
                         return true;
                     }

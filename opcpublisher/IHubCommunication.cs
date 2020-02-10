@@ -133,6 +133,5 @@ namespace OpcPublisher
         /// Exit the application.
         /// </summary>
         Task ExitApplicationAsync(int secondsTillExit);
-        long MonitoredItemsQueueCount{get;}
     }
 }

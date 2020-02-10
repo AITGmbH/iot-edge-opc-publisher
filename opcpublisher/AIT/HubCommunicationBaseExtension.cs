@@ -115,7 +115,7 @@ namespace OpcPublisher
             if (statusCode == HttpStatusCode.OK && eventsToRemoveOrUpdate.Any())
             {
                 var unpublishStatusResponse = new List<string>();
-                (statusCode, statusMessage, unpublishStatusResponse) = await UnpublishEventsAsync(endpointId, eventsToRemoveOrUpdate).ConfigureAwait(false);
+                (statusCode, unpublishStatusResponse) = await UnpublishEventsAsync(endpointId, eventsToRemoveOrUpdate).ConfigureAwait(false);
                 statusResponse.AddRange(unpublishStatusResponse);
             }
 
@@ -214,7 +214,7 @@ namespace OpcPublisher
                             }
                             catch (Exception e)
                             {
-                                statusMessage = $"Exception in ({e.Message}) while formatting node '{eventNode.Id}'!";
+                                statusMessage = $"Exception in ({e.Message}) while formatting node '{eventNode.Id}' with key '{eventNode.Key}'!";
                                 Logger.Error(e, $"{logPrefix} {statusMessage}");
                                 statusResponse.Add(statusMessage);
                                 statusCode = HttpStatusCode.NotAcceptable;
@@ -226,7 +226,7 @@ namespace OpcPublisher
                                 statusMessage = $"'{eventNode.Id}' has duplicate key '{eventNode.Key}'!";
                                 Logger.Error($"{logPrefix} {statusMessage}");
                                 statusResponse.Add(statusMessage);
-                                statusCode = HttpStatusCode.NotAcceptable;
+                                statusCode = HttpStatusCode.BadRequest;
                                 continue;
                             }
 
@@ -235,7 +235,7 @@ namespace OpcPublisher
                                 statusMessage = $"'{eventNode.Id}' with key '{eventNode.Key}' is either too long, too short or has invalid characters!";
                                 Logger.Error($"{logPrefix} {statusMessage}");
                                 statusResponse.Add(statusMessage);
-                                statusCode = HttpStatusCode.NotAcceptable;
+                                statusCode = HttpStatusCode.BadRequest;
                                 continue;
                             }
 
@@ -246,7 +246,7 @@ namespace OpcPublisher
                                 {
                                     // add the event node info to the subscription with the default publishing interval, execute synchronously
                                     Logger.Debug(
-                                        $"{logPrefix} Request to monitor eventNode with NodeId '{eventNode.Id}'");
+                                        $"{logPrefix} Request to monitor eventNode with NodeId '{eventNode.Id}' with key '{eventNode.Key}'");
                                     nodeStatusCode = await opcSession.AddEventNodeForMonitoringAsync(nodeId, null, 5000,
                                             2000, eventNode.Key, null, null, ShutdownTokenSource.Token,
                                             null, publishEventsMethodData, eventNode)
@@ -256,7 +256,7 @@ namespace OpcPublisher
                                 {
                                     // add the event node info to the subscription with the default publishing interval, execute synchronously
                                     Logger.Debug(
-                                        $"{logPrefix} Request to monitor eventNode with ExpandedNodeId '{eventNode.Id}'");
+                                        $"{logPrefix} Request to monitor eventNode with ExpandedNodeId '{eventNode.Id}' with key '{eventNode.Key}'");
                                     nodeStatusCode = await opcSession.AddEventNodeForMonitoringAsync(null, expandedNodeId, 5000,
                                             2000, eventNode.Key, null, null, ShutdownTokenSource.Token,
                                             null, publishEventsMethodData, eventNode)
@@ -267,27 +267,27 @@ namespace OpcPublisher
                                 switch (nodeStatusCode)
                                 {
                                     case HttpStatusCode.OK:
-                                        statusMessage = $"'{eventNode.Id}': already monitored";
+                                        statusMessage = $"'{eventNode.Key}': already monitored";
                                         Logger.Debug($"{logPrefix} {statusMessage}");
                                         statusResponse.Add(statusMessage);
                                         break;
 
                                     case HttpStatusCode.Accepted:
-                                        statusMessage = $"'{eventNode.Id}': added";
+                                        statusMessage = $"'{eventNode.Key}': added";
                                         Logger.Debug($"{logPrefix} {statusMessage}");
                                         statusResponse.Add(statusMessage);
                                         break;
 
                                     case HttpStatusCode.Gone:
                                         statusMessage =
-                                            $"'{eventNode.Id}': session to endpoint does not exist anymore";
+                                            $"'{eventNode.Key}': session to endpoint does not exist anymore";
                                         Logger.Debug($"{logPrefix} {statusMessage}");
                                         statusResponse.Add(statusMessage);
                                         statusCode = HttpStatusCode.Gone;
                                         break;
 
                                     case HttpStatusCode.InternalServerError:
-                                        statusMessage = $"'{eventNode.Id}': error while trying to configure";
+                                        statusMessage = $"'{eventNode.Key}': error while trying to configure";
                                         Logger.Debug($"{logPrefix} {statusMessage}");
                                         statusResponse.Add(statusMessage);
                                         statusCode = HttpStatusCode.InternalServerError;
@@ -297,7 +297,7 @@ namespace OpcPublisher
                             catch (Exception e)
                             {
                                 statusMessage =
-                                    $"Exception ({e.Message}) while trying to configure publishing node '{eventNode.Id}'";
+                                    $"Exception ({e.Message}) while trying to configure publishing node '{eventNode.Id}' with key '{eventNode.Key}'";
                                 Logger.Error(e, $"{logPrefix} {statusMessage}");
                                 statusResponse.Add(statusMessage);
                                 statusCode = HttpStatusCode.InternalServerError;
@@ -386,7 +386,7 @@ namespace OpcPublisher
             }
 
             var unpublishStatusResponse = new List<string>();
-            (statusCode, statusMessage, unpublishStatusResponse) = await UnpublishEventsAsync(endpointId, unpublishNodesMethodData.OpcEvents).ConfigureAwait(false);
+            (statusCode, unpublishStatusResponse) = await UnpublishEventsAsync(endpointId, unpublishNodesMethodData.OpcEvents).ConfigureAwait(false);
             statusResponse.AddRange(unpublishStatusResponse);
 
             // adjust response size
@@ -405,7 +405,7 @@ namespace OpcPublisher
             return methodResponse;
         }
 
-        private async Task<(HttpStatusCode statusCode, string statusMessage, List<string> statusResponse)> UnpublishEventsAsync(Guid endpointId, IEnumerable<OpcEventOnEndpointModel> opcEvents)
+        private async Task<(HttpStatusCode statusCode, List<string> statusResponse)> UnpublishEventsAsync(Guid endpointId, IEnumerable<OpcEventOnEndpointModel> opcEvents)
         {
             string logPrefix = "UnpublishEventsAsync:";
             IOpcSession opcSession = null;
@@ -532,7 +532,7 @@ namespace OpcPublisher
                 await opcSession.ConnectAndMonitorAsync().ConfigureAwait(false);
             }
 
-            return (statusCode, statusMessage, statusResponse);
+            return (statusCode, statusResponse);
         }
 
         /// <summary>

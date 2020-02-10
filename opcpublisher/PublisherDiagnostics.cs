@@ -27,10 +27,8 @@ namespace OpcPublisher
         /// <summary>
         /// Initialize the diagnostic object.
         /// </summary>
-        public PublisherDiagnostics(IHubCommunication Hub)
+        public PublisherDiagnostics()
         {
-            // init data
-            _hub = Hub;
             _showDiagnosticsInfoTask = null;
             _shutdownTokenSource = new CancellationTokenSource();
 
@@ -90,7 +88,7 @@ namespace OpcPublisher
                 diagnosticInfo.MonitoredItemsQueueCapacity = MonitoredItemsQueueCapacity;
                 diagnosticInfo.MonitoredPropertiesQueueCapacity = MonitoredPropertiesQueueCapacity;
                 diagnosticInfo.MonitoredSettingsQueueCapacity = MonitoredSettingsQueueCapacity;
-                diagnosticInfo.MonitoredItemsQueueCount = _hub.MonitoredItemsQueueCount;
+                diagnosticInfo.MonitoredItemsQueueCount = MonitoredItemsQueueCount;
                 diagnosticInfo.MonitoredPropertiesQueueCount = MonitoredPropertiesQueueCount;
                 diagnosticInfo.MonitoredSettingsQueueCount = MonitoredSettingsQueueCount;
                 diagnosticInfo.EnqueueCount = EnqueueCount;
@@ -307,9 +305,7 @@ namespace OpcPublisher
         private static CancellationTokenSource _shutdownTokenSource;
         private static Task _showDiagnosticsInfoTask;
         private static List<string> _startupLog = new List<string>();
-
         private static readonly object _singletonLock = new object();
-        private static IHubCommunication _hub;
     }
 
     /// <summary>

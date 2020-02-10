@@ -1,23 +1,20 @@
-﻿using Microsoft.Azure.Devices.Shared;
-using Newtonsoft.Json;
-using Opc.Ua;
-using OpcPublisher.AIT;
-using Serilog.Core;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading;
-using System.Threading.Tasks;
-
-namespace OpcPublisher
+﻿namespace OpcPublisher
 {
+    using Microsoft.Azure.Devices.Shared;
     using Microsoft.Azure.Devices.Client;
+    using Newtonsoft.Json;
     using Newtonsoft.Json.Linq;
+    using Opc.Ua;
+    using Serilog.Core;
+    using System.Collections.Generic;
     using System;
-    using System.Globalization;
     using System.Net;
     using System.Reflection;
     using System.Text;
     using System.Web;
+    using System.Linq;
+    using System.Threading;
+    using System.Threading.Tasks;
 
 
     /// <summary>
@@ -244,6 +241,7 @@ namespace OpcPublisher
 
             var eventMessage = new Message(Encoding.UTF8.GetBytes(reportedPropertiesEdge.ToJson()));
             eventMessage.Properties["x-reported-properties"] = "true";
+            eventMessage.Properties["endpointId"] = message?.DataChangeMessageData?.EndpointId ?? message?.EventMessageData?.EndpointId;
 
             if (_iotHubClient == null)
             {
@@ -278,6 +276,7 @@ namespace OpcPublisher
 
             var eventMessage = new Message(Encoding.UTF8.GetBytes(reportedPropertiesEdge.ToJson()));
             eventMessage.Properties["x-reported-properties"] = "true";
+            eventMessage.Properties["endpointId"] = message?.DataChangeMessageData?.EndpointId ?? message?.EventMessageData?.EndpointId;
 
             if (_iotHubClient == null)
             {
@@ -499,7 +498,7 @@ namespace OpcPublisher
                                     var paramKey = HttpUtility.UrlDecode(param.Key);
 
                                     var opcUaArgument = (Argument)inputArgument.Body;
-                                    if (string.Compare(paramKey, opcUaArgument.Name, true, CultureInfo.InvariantCulture) != 0)
+                                    if (string.Compare(paramKey, opcUaArgument.Name, StringComparison.OrdinalIgnoreCase) != 0)
                                     {
                                         continue;
                                     }
