@@ -396,7 +396,7 @@
                                     message = errorMessage,
                                     status = "failed"
                                 };
-                                await UpdateReportedPropertiesAsync(reportedProperties);
+                                await UpdateReportedPropertiesAsync(opcSession.EndpointId, reportedProperties);
 
                                 continue;
                             }
@@ -446,7 +446,7 @@
                                 message
                             };
 
-                            await UpdateReportedPropertiesAsync(reportedProperties);
+                            await UpdateReportedPropertiesAsync(opcSession.EndpointId, reportedProperties);
                         }
                         catch (Exception e)
                         {
@@ -460,7 +460,7 @@
                                 message = $"Failure during synchronizing OPC UA Values, Reason: {e.Message}"
                             };
 
-                            await UpdateReportedPropertiesAsync(reportedProperties);
+                            await UpdateReportedPropertiesAsync(opcSession.EndpointId, reportedProperties);
                         }
                     }
                 }
@@ -473,11 +473,14 @@
             string message = $"Method '{methodRequest.Name}' successfully received. Started to handle Command.";
             _logger.Information($"{logPrefix} {message}");
             string resultString = null;
+            Guid endpointId = Guid.Empty;
             HttpStatusCode resultStatusCode = HttpStatusCode.NoContent;
 
             var opcSessions = Program.NodeConfiguration.OpcSessions;
             foreach (var opcSession in opcSessions)
             {
+                endpointId = opcSession.EndpointId;
+
                 foreach (var opcSubscription in opcSession.OpcSubscriptions)
                 {
                     foreach (var opcMonitoredItem in opcSubscription.OpcMonitoredItems)
@@ -617,15 +620,16 @@
             {
                 value = resultString
             };
-            await UpdateReportedPropertiesAsync(reportedProperties);
+            await UpdateReportedPropertiesAsync(endpointId, reportedProperties);
 
             return new MethodResponse((int)resultStatusCode);
         }
 
-        private async Task UpdateReportedPropertiesAsync(TwinCollection reportedProperties)
+        private async Task UpdateReportedPropertiesAsync(Guid endpointId, TwinCollection reportedProperties)
         {
             var eventMessage = new Message(Encoding.UTF8.GetBytes(reportedProperties.ToJson()));
             eventMessage.Properties["x-reported-properties"] = "true";
+            eventMessage.Properties["endpointId"] = endpointId.ToString();
 
             if (_iotHubClient == null)
             {
