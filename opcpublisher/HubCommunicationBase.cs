@@ -37,7 +37,7 @@
         /// <summary>
         /// Number of events in the monitored items queue.
         /// </summary>
-        public long MonitoredItemsQueueCount => _monitoredItemsDataQueue == null ? 0 : _monitoredItemsDataQueue.Count;
+        public static long MonitoredItemsQueueCount => _monitoredItemsDataQueue == null ? 0 : _monitoredItemsDataQueue.Count;
 
         /// <summary>
         /// Number of events we enqueued.
@@ -338,7 +338,7 @@
             if (statusCode == HttpStatusCode.OK && nodesToRemoveOrUpdate.Any())
             {
                 var unpublishStatusResponse = new List<string>();
-                (statusCode, statusMessage, unpublishStatusResponse) = await UnpublishNodesAsync(endpointId, nodesToRemoveOrUpdate).ConfigureAwait(false);
+                (statusCode, unpublishStatusResponse) = await UnpublishNodesAsync(endpointId, nodesToRemoveOrUpdate).ConfigureAwait(false);
                 statusResponse.AddRange(unpublishStatusResponse);
             }
 
@@ -430,7 +430,7 @@
                                     statusMessage = $"'{node.Id}' has duplicate key '{node.Key}'!";
                                     Logger.Error($"{logPrefix} {statusMessage}");
                                     statusResponse.Add(statusMessage);
-                                    statusCode = HttpStatusCode.NotAcceptable;
+                                    statusCode = HttpStatusCode.BadRequest;
                                     continue;
                                 }
 
@@ -439,7 +439,7 @@
                                     statusMessage = $"'{node.Id}' with key '{node.Key}' is either too long or has invalid characters!";
                                     Logger.Error($"{logPrefix} {statusMessage}");
                                     statusResponse.Add(statusMessage);
-                                    statusCode = HttpStatusCode.NotAcceptable;
+                                    statusCode = HttpStatusCode.BadRequest;
                                     continue;
                                 }
 
@@ -461,7 +461,7 @@
                                 }
                                 catch (Exception e)
                                 {
-                                    statusMessage = $"Exception ({e.Message}) while formatting node '{node.Id}'!";
+                                    statusMessage = $"Exception ({e.Message}) while formatting node '{node.Key}'!";
                                     Logger.Error(e, $"{logPrefix} {statusMessage}");
                                     statusResponse.Add(statusMessage);
                                     statusCode = HttpStatusCode.NotAcceptable;
@@ -473,7 +473,7 @@
                                     if (isNodeIdFormat)
                                     {
                                         // add the node info to the subscription with the default publishing interval, execute syncronously
-                                        Logger.Debug($"{logPrefix} Request to monitor item with NodeId '{node.Id}' (PublishingInterval: {node.OpcPublishingInterval.ToString() ?? "--"}, SamplingInterval: {node.OpcSamplingInterval.ToString() ?? "--"})");
+                                        Logger.Debug($"{logPrefix} Request to monitor item with NodeId '{node.Id}' with key '{node.Key}' (PublishingInterval: {node.OpcPublishingInterval.ToString() ?? "--"}, SamplingInterval: {node.OpcSamplingInterval.ToString() ?? "--"})");
                                         nodeStatusCode = await opcSession.AddNodeForMonitoringAsync(nodeId, null,
                                             node.OpcPublishingInterval, node.OpcSamplingInterval, node.Key, node.DisplayName,
                                             node.HeartbeatInterval, node.SkipFirst,
@@ -482,7 +482,7 @@
                                     else
                                     {
                                         // add the node info to the subscription with the default publishing interval, execute syncronously
-                                        Logger.Debug($"{logPrefix} Request to monitor item with ExpandedNodeId '{node.Id}' (PublishingInterval: {node.OpcPublishingInterval.ToString() ?? "--"}, SamplingInterval: {node.OpcSamplingInterval.ToString() ?? "--"})");
+                                        Logger.Debug($"{logPrefix} Request to monitor item with ExpandedNodeId '{node.Id}' with key '{node.Key}' (PublishingInterval: {node.OpcPublishingInterval.ToString() ?? "--"}, SamplingInterval: {node.OpcSamplingInterval.ToString() ?? "--"})");
                                         nodeStatusCode = await opcSession.AddNodeForMonitoringAsync(null, expandedNodeId,
                                             node.OpcPublishingInterval, node.OpcSamplingInterval, node.Key, node.DisplayName,
                                             node.HeartbeatInterval, node.SkipFirst,
@@ -493,26 +493,26 @@
                                     switch (nodeStatusCode)
                                     {
                                         case HttpStatusCode.OK:
-                                            statusMessage = $"'{node.Id}': already monitored";
+                                            statusMessage = $"'{node.Key}': already monitored";
                                             Logger.Debug($"{logPrefix} {statusMessage}");
                                             statusResponse.Add(statusMessage);
                                             break;
 
                                         case HttpStatusCode.Accepted:
-                                            statusMessage = $"'{node.Id}': added";
+                                            statusMessage = $"'{node.Key}': added";
                                             Logger.Debug($"{logPrefix} {statusMessage}");
                                             statusResponse.Add(statusMessage);
                                             break;
 
                                         case HttpStatusCode.Gone:
-                                            statusMessage = $"'{node.Id}': session to endpoint does not exist anymore";
+                                            statusMessage = $"'{node.Key}': session to endpoint does not exist anymore";
                                             Logger.Debug($"{logPrefix} {statusMessage}");
                                             statusResponse.Add(statusMessage);
                                             statusCode = HttpStatusCode.Gone;
                                             break;
 
                                         case HttpStatusCode.InternalServerError:
-                                            statusMessage = $"'{node.Id}': error while trying to configure";
+                                            statusMessage = $"'{node.Key}': error while trying to configure";
                                             Logger.Debug($"{logPrefix} {statusMessage}");
                                             statusResponse.Add(statusMessage);
                                             statusCode = HttpStatusCode.InternalServerError;
@@ -521,7 +521,7 @@
                                 }
                                 catch (Exception e)
                                 {
-                                    statusMessage = $"Exception ({e.Message}) while trying to configure publishing node '{node.Id}'";
+                                    statusMessage = $"Exception ({e.Message}) while trying to configure publishing node '{node.Id}' with key '{node.Key}'";
                                     Logger.Error(e, $"{logPrefix} {statusMessage}");
                                     statusResponse.Add(statusMessage);
                                     statusCode = HttpStatusCode.InternalServerError;
@@ -617,7 +617,7 @@
             }
 
             var unpublishStatusResponse = new List<string>();
-            (statusCode, statusMessage, unpublishStatusResponse) = await UnpublishNodesAsync(endpointId, unpublishNodesMethodData.OpcNodes).ConfigureAwait(false);
+            (statusCode, unpublishStatusResponse) = await UnpublishNodesAsync(endpointId, unpublishNodesMethodData.OpcNodes).ConfigureAwait(false);
             statusResponse.AddRange(unpublishStatusResponse);
 
             // adjust response size
@@ -636,7 +636,7 @@
             return methodResponse;
         }
 
-        private async Task<(HttpStatusCode statusCode, string statusMessage, List<string> statusResponse)> UnpublishNodesAsync(Guid endpointId, IEnumerable<OpcNodeOnEndpointModel> opcNodes)
+        private async Task<(HttpStatusCode statusCode, List<string> statusResponse)> UnpublishNodesAsync(Guid endpointId, IEnumerable<OpcNodeOnEndpointModel> opcNodes)
         {
             string logPrefix = "UnpublishNodesAsync:";
             NodeId nodeId = null;
@@ -709,7 +709,7 @@
                                     }
                                     catch (Exception e)
                                     {
-                                        statusMessage = $"Exception ({e.Message}) while formatting node '{node.Id}'!";
+                                        statusMessage = $"Exception ({e.Message}) while formatting node '{node.Id}' with key '{node.Key}'!";
                                         Logger.Error(e, $"{logPrefix} {statusMessage}");
                                         statusResponse.Add(statusMessage);
                                         statusCode = HttpStatusCode.NotAcceptable;
@@ -721,13 +721,13 @@
                                         if (isNodeIdFormat)
                                         {
                                             // stop monitoring the node, execute synchronously
-                                            Logger.Information($"{logPrefix} Request to stop monitoring item with NodeId '{nodeId.ToString()}')");
+                                            Logger.Information($"{logPrefix} Request to stop monitoring item with NodeId '{nodeId.ToString()}' and key '{node.Key}'");
                                             nodeStatusCode = await opcSession.RequestMonitorItemRemovalAsync(nodeId, null, ShutdownTokenSource.Token).ConfigureAwait(false);
                                         }
                                         else
                                         {
                                             // stop monitoring the node, execute synchronously
-                                            Logger.Information($"{logPrefix} Request to stop monitoring item with ExpandedNodeId '{expandedNodeId.ToString()}')");
+                                            Logger.Information($"{logPrefix} Request to stop monitoring item with ExpandedNodeId '{expandedNodeId.ToString()} and key '{node.Key}'");
                                             nodeStatusCode = await opcSession.RequestMonitorItemRemovalAsync(null, expandedNodeId, ShutdownTokenSource.Token).ConfigureAwait(false);
                                         }
 
@@ -735,26 +735,26 @@
                                         switch (nodeStatusCode)
                                         {
                                             case HttpStatusCode.OK:
-                                                statusMessage = $"Id '{node.Id}': was not configured";
+                                                statusMessage = $"Key '{node.Key}': was not configured";
                                                 Logger.Debug($"{logPrefix} {statusMessage}");
                                                 statusResponse.Add(statusMessage);
                                                 break;
 
                                             case HttpStatusCode.Accepted:
-                                                statusMessage = $"Id '{node.Id}': tagged for removal";
+                                                statusMessage = $"Key '{node.Key}': tagged for removal";
                                                 Logger.Debug($"{logPrefix} {statusMessage}");
                                                 statusResponse.Add(statusMessage);
                                                 break;
 
                                             case HttpStatusCode.Gone:
-                                                statusMessage = $"Id '{node.Id}': session to endpoint does not exist anymore";
+                                                statusMessage = $"Key '{node.Key}': session to endpoint does not exist anymore";
                                                 Logger.Debug($"{logPrefix} {statusMessage}");
                                                 statusResponse.Add(statusMessage);
                                                 statusCode = HttpStatusCode.Gone;
                                                 break;
 
                                             case HttpStatusCode.InternalServerError:
-                                                statusMessage = $"Id '{node.Id}': error while trying to remove";
+                                                statusMessage = $"Key '{node.Key}': error while trying to remove";
                                                 Logger.Debug($"{logPrefix} {statusMessage}");
                                                 statusResponse.Add(statusMessage);
                                                 statusCode = HttpStatusCode.InternalServerError;
@@ -763,7 +763,7 @@
                                     }
                                     catch (Exception e)
                                     {
-                                        statusMessage = $"Exception ({e.Message}) while trying to tag node '{node.Id}' for removal";
+                                        statusMessage = $"Exception ({e.Message}) while trying to tag node '{node.Key}' for removal";
                                         Logger.Error(e, $"{logPrefix} {statusMessage}");
                                         statusResponse.Add(statusMessage);
                                         statusCode = HttpStatusCode.InternalServerError;
@@ -803,7 +803,7 @@
                 await opcSession.ConnectAndMonitorAsync().ConfigureAwait(false);
             }
 
-            return (statusCode, statusMessage, statusResponse);
+            return (statusCode, statusResponse);
         }
 
         /// <summary>
@@ -2097,7 +2097,7 @@
         private Task _monitoredSettingsProcessorTask;
         private static PropertiesProcessor _propertiesProcessor;
         private Task _monitoredPropertiesProcessorTask;
-        private BlockingCollection<MessageData> _monitoredItemsDataQueue = null;
+        private static BlockingCollection<MessageData> _monitoredItemsDataQueue = null;
         private static Task _monitoredItemsProcessorTask;
         private IHubClient _hubClient;
         private CancellationTokenSource _hubCommunicationCts;

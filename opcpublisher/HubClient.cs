@@ -1,23 +1,20 @@
-﻿using Microsoft.Azure.Devices.Shared;
-using Newtonsoft.Json;
-using Opc.Ua;
-using OpcPublisher.AIT;
-using Serilog.Core;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading;
-using System.Threading.Tasks;
-
-namespace OpcPublisher
+﻿namespace OpcPublisher
 {
+    using Microsoft.Azure.Devices.Shared;
     using Microsoft.Azure.Devices.Client;
+    using Newtonsoft.Json;
     using Newtonsoft.Json.Linq;
+    using Opc.Ua;
+    using Serilog.Core;
+    using System.Collections.Generic;
     using System;
-    using System.Globalization;
     using System.Net;
     using System.Reflection;
     using System.Text;
     using System.Web;
+    using System.Linq;
+    using System.Threading;
+    using System.Threading.Tasks;
 
 
     /// <summary>
@@ -244,6 +241,7 @@ namespace OpcPublisher
 
             var eventMessage = new Message(Encoding.UTF8.GetBytes(reportedPropertiesEdge.ToJson()));
             eventMessage.Properties["x-reported-properties"] = "true";
+            eventMessage.Properties["endpointId"] = message?.DataChangeMessageData?.EndpointId ?? message?.EventMessageData?.EndpointId;
 
             if (_iotHubClient == null)
             {
@@ -278,6 +276,7 @@ namespace OpcPublisher
 
             var eventMessage = new Message(Encoding.UTF8.GetBytes(reportedPropertiesEdge.ToJson()));
             eventMessage.Properties["x-reported-properties"] = "true";
+            eventMessage.Properties["endpointId"] = message?.DataChangeMessageData?.EndpointId ?? message?.EventMessageData?.EndpointId;
 
             if (_iotHubClient == null)
             {
@@ -397,7 +396,7 @@ namespace OpcPublisher
                                     message = errorMessage,
                                     status = "failed"
                                 };
-                                await UpdateReportedPropertiesAsync(reportedProperties);
+                                await UpdateReportedPropertiesAsync(opcSession.EndpointId, reportedProperties);
 
                                 continue;
                             }
@@ -447,7 +446,7 @@ namespace OpcPublisher
                                 message
                             };
 
-                            await UpdateReportedPropertiesAsync(reportedProperties);
+                            await UpdateReportedPropertiesAsync(opcSession.EndpointId, reportedProperties);
                         }
                         catch (Exception e)
                         {
@@ -461,7 +460,7 @@ namespace OpcPublisher
                                 message = $"Failure during synchronizing OPC UA Values, Reason: {e.Message}"
                             };
 
-                            await UpdateReportedPropertiesAsync(reportedProperties);
+                            await UpdateReportedPropertiesAsync(opcSession.EndpointId, reportedProperties);
                         }
                     }
                 }
@@ -474,11 +473,14 @@ namespace OpcPublisher
             string message = $"Method '{methodRequest.Name}' successfully received. Started to handle Command.";
             _logger.Information($"{logPrefix} {message}");
             string resultString = null;
+            Guid endpointId = Guid.Empty;
             HttpStatusCode resultStatusCode = HttpStatusCode.NoContent;
 
             var opcSessions = Program.NodeConfiguration.OpcSessions;
             foreach (var opcSession in opcSessions)
             {
+                endpointId = opcSession.EndpointId;
+
                 foreach (var opcSubscription in opcSession.OpcSubscriptions)
                 {
                     foreach (var opcMonitoredItem in opcSubscription.OpcMonitoredItems)
@@ -499,7 +501,7 @@ namespace OpcPublisher
                                     var paramKey = HttpUtility.UrlDecode(param.Key);
 
                                     var opcUaArgument = (Argument)inputArgument.Body;
-                                    if (string.Compare(paramKey, opcUaArgument.Name, true, CultureInfo.InvariantCulture) != 0)
+                                    if (string.Compare(paramKey, opcUaArgument.Name, StringComparison.OrdinalIgnoreCase) != 0)
                                     {
                                         continue;
                                     }
@@ -618,15 +620,16 @@ namespace OpcPublisher
             {
                 value = resultString
             };
-            await UpdateReportedPropertiesAsync(reportedProperties);
+            await UpdateReportedPropertiesAsync(endpointId, reportedProperties);
 
             return new MethodResponse((int)resultStatusCode);
         }
 
-        private async Task UpdateReportedPropertiesAsync(TwinCollection reportedProperties)
+        private async Task UpdateReportedPropertiesAsync(Guid endpointId, TwinCollection reportedProperties)
         {
             var eventMessage = new Message(Encoding.UTF8.GetBytes(reportedProperties.ToJson()));
             eventMessage.Properties["x-reported-properties"] = "true";
+            eventMessage.Properties["endpointId"] = endpointId.ToString();
 
             if (_iotHubClient == null)
             {
