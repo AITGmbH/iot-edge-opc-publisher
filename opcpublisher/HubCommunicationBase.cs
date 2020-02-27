@@ -283,7 +283,6 @@
             EncryptedNetworkCredential desiredEncryptedCredential = null;
 
             PublishNodesMethodRequestModel publishNodesMethodData = null;
-            PublishNodesMethodResponseModel publishedNodesMethodResponse = null;
             HttpStatusCode statusCode = HttpStatusCode.OK;
             HttpStatusCode nodeStatusCode = HttpStatusCode.InternalServerError;
             List<string> statusResponse = new List<string>();
@@ -528,8 +527,6 @@
                                 }
                             }
                         }
-
-                        publishedNodesMethodResponse = new PublishNodesMethodResponseModel(endpointId.ToString());
                     }
                 }
                 catch (AggregateException e)
@@ -561,6 +558,8 @@
                     await opcSession.ConnectAndMonitorAsync().ConfigureAwait(false);
                 }
             }
+
+            var publishedNodesMethodResponse = new PublishNodesMethodResponseModel(endpointId.ToString());
 
             // build response
             string resultString = statusCode == HttpStatusCode.OK ?
